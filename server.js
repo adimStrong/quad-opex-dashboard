@@ -241,6 +241,107 @@ app.get('/api/master', async (req, res) => {
   }
 });
 
+// API: Full Master Ledger transactions (fund flow)
+app.get('/api/ledger', async (req, res) => {
+  try {
+    const rows = await getSheetData('Master Ledger', 'A8:K200');
+    const headers = rows[0];
+    const data = rows.slice(1)
+      .filter(r => r[0] && r[0] !== '')
+      .map(r => ({
+        no: parseInt(r[0]) || 0,
+        date: r[1] || '',
+        type: r[2] || '',
+        source: r[3] || '',
+        description: r[4] || '',
+        person: r[5] || '',
+        debit: parseAmount(r[6]),
+        credit: parseAmount(r[7]),
+        balance: parseAmount(r[8]),
+        reference: r[9] || '',
+        remarks: r[10] || '',
+      }));
+    res.json(data);
+  } catch (err) {
+    console.error('Ledger error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Fund flow summary (remittance by site)
+app.get('/api/fundflow', async (req, res) => {
+  try {
+    const rows = await getSheetData('Master Ledger', 'A8:K200');
+    const txns = rows.slice(1).filter(r => r[0] && r[0] !== '');
+
+    let totalRemittance = 0;
+    let totalExpenses = 0;
+    const bySite = {};
+    const bySource = {};
+    const daily = {};
+
+    txns.forEach(r => {
+      const type = r[2] || '';
+      const source = r[3] || '';
+      const person = r[5] || '';
+      const debit = parseAmount(r[6]);
+      const credit = parseAmount(r[7]);
+      const date = r[1] || '';
+
+      if (type === 'CREDIT') {
+        const amount = credit || debit;
+        totalRemittance += amount;
+        // Extract site name from person field (e.g., "Neji - COW" -> "COW")
+        let site = person;
+        if (person.includes(' - ')) {
+          site = person.split(' - ').pop().trim();
+        }
+        // Map to standard names
+        const siteMap = {
+          'COW': 'Cow88 (COW)',
+          'City of Wins': 'Cow88 (COW)',
+          'T2B': 'Time to Bet (T2B)',
+          'Time 2 Bet': 'Time to Bet (T2B)',
+          'RLM': 'Roll Em (RLM)',
+          'Rollem': 'Roll Em (RLM)',
+          'WFL': 'Win For Life (WFL)',
+          'Win For Life': 'Win For Life (WFL)',
+        };
+        const mappedSite = siteMap[site] || site;
+        bySite[mappedSite] = (bySite[mappedSite] || 0) + amount;
+      } else if (type === 'DEBIT') {
+        const amount = debit || credit;
+        totalExpenses += amount;
+        bySource[source] = (bySource[source] || 0) + amount;
+      }
+
+      // Daily flow
+      if (date) {
+        if (!daily[date]) daily[date] = { in: 0, out: 0 };
+        if (type === 'CREDIT') daily[date].in += (credit || debit);
+        if (type === 'DEBIT') daily[date].out += (debit || credit);
+      }
+    });
+
+    const dailyArray = Object.entries(daily)
+      .map(([date, v]) => ({ date, in: v.in, out: v.out, net: v.in - v.out }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    res.json({
+      totalRemittance,
+      totalExpenses,
+      cashBalance: totalRemittance - totalExpenses,
+      bySite,
+      bySource,
+      daily: dailyArray,
+      transactionCount: txns.length,
+    });
+  } catch (err) {
+    console.error('Fundflow error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`QUAD OPEX Dashboard running on port ${PORT}`);
 });
