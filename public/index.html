@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QUAD OPEX Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-start:#1a0033;--bg-end:#2d1b69;
+  --card-bg:rgba(255,255,255,0.08);--card-border:rgba(255,255,255,0.15);
+  --card-hover:rgba(255,255,255,0.13);
+  --blue:#2196F3;--orange:#FF9800;--green:#4CAF50;
+  --red:#f44336;--yellow:#FFC107;--purple:#9C27B0;
+  --text:#ffffff;--text-dim:rgba(255,255,255,0.6);
+  --radius:16px;
+}
+html{font-size:14px}
+body{
+  font-family:'Inter',system-ui,sans-serif;
+  background:linear-gradient(135deg,var(--bg-start) 0%,var(--bg-end) 50%,#1a0033 100%);
+  color:var(--text);min-height:100vh;
+  padding:24px;
+}
+.container{max-width:1440px;margin:0 auto}
+
+/* Glass card */
+.glass{
+  background:var(--card-bg);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border:1px solid var(--card-border);
+  border-radius:var(--radius);
+  padding:20px;
+  transition:background .25s ease, transform .15s ease, box-shadow .25s ease;
+}
+.glass:hover{background:var(--card-hover);transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,0.3)}
+
+/* Header */
+.header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:24px}
+.header h1{font-size:1.8rem;font-weight:800;background:linear-gradient(135deg,#b388ff,#7c4dff,#651fff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-0.5px}
+.header-meta{display:flex;align-items:center;gap:16px;font-size:.82rem;color:var(--text-dim)}
+.header-meta .dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* Grids */
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:20px}
+.grid-2x2{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto auto;gap:16px;margin-bottom:20px}
+
+/* KPI cards */
+.kpi{text-align:center;padding:24px 16px}
+.kpi .kpi-label{font-size:.75rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-dim);margin-bottom:8px;font-weight:600}
+.kpi .kpi-value{font-size:1.65rem;font-weight:700;letter-spacing:-0.5px}
+.kpi .kpi-sub{font-size:.78rem;color:var(--text-dim);margin-top:6px}
+.kpi .kpi-icon{width:44px;height:44px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:1.3rem}
+
+/* Status cards */
+.status-card{display:flex;align-items:center;gap:16px;padding:20px 24px}
+.status-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.status-info .status-label{font-size:.78rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);font-weight:600}
+.status-info .status-value{font-size:1.35rem;font-weight:700;margin-top:2px}
+.status-info .status-count{font-size:.75rem;color:var(--text-dim);margin-top:2px}
+
+/* Filter bar */
+.filter-bar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;padding:20px;margin-bottom:20px}
+.filter-group{display:flex;flex-direction:column;gap:4px;flex:1;min-width:150px}
+.filter-group label{font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);font-weight:600}
+.filter-group select,.filter-group input{
+  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);
+  color:#fff;padding:8px 12px;border-radius:10px;font-size:.82rem;font-family:inherit;
+  outline:none;transition:border-color .2s;
+}
+.filter-group select:focus,.filter-group input:focus{border-color:var(--purple)}
+.filter-group select option{background:#2d1b69;color:#fff}
+.btn-reset{
+  background:linear-gradient(135deg,#7c4dff,#651fff);color:#fff;border:none;
+  padding:9px 20px;border-radius:10px;font-size:.82rem;font-weight:600;cursor:pointer;
+  font-family:inherit;transition:opacity .2s;align-self:flex-end;
+}
+.btn-reset:hover{opacity:.85}
+
+/* Chart containers */
+.chart-card{padding:20px}
+.chart-card h3{font-size:.85rem;font-weight:600;margin-bottom:14px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px}
+.chart-wrap{position:relative;width:100%;min-height:280px}
+.chart-wrap canvas{width:100%!important}
+
+/* Tables */
+.table-wrap{overflow-x:auto;margin-bottom:20px}
+table{width:100%;border-collapse:collapse;font-size:.78rem}
+th{
+  text-align:left;padding:10px 12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;
+  color:var(--text-dim);font-size:.7rem;border-bottom:1px solid rgba(255,255,255,0.1);
+  cursor:pointer;user-select:none;white-space:nowrap;
+}
+th:hover{color:#fff}
+th .sort-arrow{margin-left:4px;opacity:.4;font-size:.65rem}
+th.sorted .sort-arrow{opacity:1}
+td{padding:9px 12px;border-bottom:1px solid rgba(255,255,255,0.05);white-space:nowrap}
+tr:hover td{background:rgba(255,255,255,0.04)}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.7rem;font-weight:600}
+.badge-opex{background:rgba(76,175,80,0.2);color:#81c784}
+.badge-preop{background:rgba(33,150,243,0.2);color:#64b5f6}
+.badge-hard{background:rgba(255,152,0,0.2);color:#ffb74d}
+.badge-approved{background:rgba(76,175,80,0.2);color:#81c784}
+.badge-pending{background:rgba(255,193,7,0.2);color:#ffd54f}
+
+/* Cross-tab */
+.crosstab th{font-size:.68rem}
+.crosstab td{font-size:.75rem;text-align:right}
+.crosstab td:first-child{text-align:left;font-weight:600}
+.crosstab .row-total{font-weight:700;background:rgba(255,255,255,0.04)}
+.crosstab .col-total{font-weight:700;background:rgba(255,255,255,0.04)}
+
+/* Loading overlay */
+.loading-overlay{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  background:rgba(26,0,51,0.92);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;z-index:9999;
+  transition:opacity .4s;
+}
+.loading-overlay.hidden{opacity:0;pointer-events:none}
+.spinner{width:48px;height:48px;border:3px solid rgba(255,255,255,0.1);border-top-color:#7c4dff;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{margin-top:16px;color:var(--text-dim);font-size:.9rem}
+
+/* Error */
+.error-banner{
+  background:rgba(244,67,54,0.15);border:1px solid rgba(244,67,54,0.3);
+  border-radius:12px;padding:16px 20px;margin-bottom:20px;display:none;
+  font-size:.85rem;color:#ef9a9a;
+}
+
+/* Responsive */
+@media(max-width:1200px){.grid-4{grid-template-columns:repeat(2,1fr)}.grid-3{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:768px){
+  .grid-4,.grid-3,.grid-2,.grid-2x2{grid-template-columns:1fr}
+  .header{flex-direction:column;align-items:flex-start}
+  body{padding:12px}
+  .kpi .kpi-value{font-size:1.3rem}
+}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text">Loading dashboard...</div>
+</div>
+
+<div class="container">
+  <!-- Header -->
+  <div class="header">
+    <h1>QUAD OPEX Dashboard</h1>
+    <div class="header-meta">
+      <span><span class="dot"></span> Live</span>
+      <span id="lastUpdated">Last updated: --</span>
+      <span>Auto-refresh: 5 min</span>
+    </div>
+  </div>
+
+  <!-- Error banner -->
+  <div class="error-banner" id="errorBanner"></div>
+
+  <!-- Master Ledger -->
+  <div class="grid-3" id="masterRow">
+    <div class="glass kpi">
+      <div class="kpi-icon" style="background:rgba(33,150,243,0.15);color:var(--blue)">&#8369;</div>
+      <div class="kpi-label">Total Remittance</div>
+      <div class="kpi-value" id="masterRemittance">--</div>
+    </div>
+    <div class="glass kpi">
+      <div class="kpi-icon" style="background:rgba(244,67,54,0.15);color:var(--red)">&#8369;</div>
+      <div class="kpi-label">Total Expenses</div>
+      <div class="kpi-value" id="masterExpenses">--</div>
+    </div>
+    <div class="glass kpi">
+      <div class="kpi-icon" style="background:rgba(76,175,80,0.15);color:var(--green)">&#8369;</div>
+      <div class="kpi-label">Cash Balance</div>
+      <div class="kpi-value" id="masterBalance">--</div>
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="grid-4" id="kpiRow">
+    <div class="glass kpi">
+      <div class="kpi-icon" style="background:rgba(156,39,176,0.15);color:var(--purple)">&#931;</div>
+      <div class="kpi-label">Total All Expenses</div>
+      <div class="kpi-value" id="kpiTotal">--</div>
+      <div class="kpi-sub" id="kpiTotalCount">-- items</div>
+    </div>
+    <div class="glass kpi">
+      <div class="kpi-icon" style="background:rgba(33,150,243,0.15);color:var(--blue)">&#9670;</div>
+      <div class="kpi-label">Pre-Operation</div>
+      <div class="kpi-value" id="kpiPreOp">--</div>
+      <div class="kpi-sub" id="kpiPreOpCount">-- items</div>
+    </div>
+    <div class="glass kpi">
+      <div class="kpi-icon" style="background:rgba(255,152,0,0.15);color:var(--orange)">&#9646;</div>
+      <div class="kpi-label">Hard Assets</div>
+      <div class="kpi-value" id="kpiHard">--</div>
+      <div class="kpi-sub" id="kpiHardCount">-- items</div>
+    </div>
+    <div class="glass kpi">
+      <div class="kpi-icon" style="background:rgba(76,175,80,0.15);color:var(--green)">&#9632;</div>
+      <div class="kpi-label">OPEX</div>
+      <div class="kpi-value" id="kpiOpex">--</div>
+      <div class="kpi-sub" id="kpiOpexCount">-- items</div>
+    </div>
+  </div>
+
+  <!-- Status Cards -->
+  <div class="grid-2" id="statusRow">
+    <div class="glass status-card">
+      <div class="status-dot" style="background:var(--green)"></div>
+      <div class="status-info">
+        <div class="status-label">Approved</div>
+        <div class="status-value" id="statusApproved">--</div>
+        <div class="status-count" id="statusApprovedCount">-- transactions</div>
+      </div>
+    </div>
+    <div class="glass status-card">
+      <div class="status-dot" style="background:var(--yellow)"></div>
+      <div class="status-info">
+        <div class="status-label">Pending</div>
+        <div class="status-value" id="statusPending">--</div>
+        <div class="status-count" id="statusPendingCount">-- transactions</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter Bar -->
+  <div class="glass filter-bar" id="filterBar">
+    <div class="filter-group">
+      <label>Expense Type</label>
+      <select id="filterType"><option value="">All</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Department</label>
+      <select id="filterDept"><option value="">All</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Website</label>
+      <select id="filterSite"><option value="">All</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Person</label>
+      <select id="filterPerson"><option value="">All</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Date From</label>
+      <input type="date" id="filterDateFrom">
+    </div>
+    <div class="filter-group">
+      <label>Date To</label>
+      <input type="date" id="filterDateTo">
+    </div>
+    <button class="btn-reset" id="btnReset">Reset</button>
+  </div>
+
+  <!-- Charts 2x2 -->
+  <div class="grid-2x2">
+    <div class="glass chart-card">
+      <h3>Expenses by Department</h3>
+      <div class="chart-wrap"><canvas id="chartDept"></canvas></div>
+    </div>
+    <div class="glass chart-card">
+      <h3>Expense Type Breakdown</h3>
+      <div class="chart-wrap" style="max-width:340px;margin:0 auto"><canvas id="chartType"></canvas></div>
+    </div>
+    <div class="glass chart-card">
+      <h3>Expenses by Website / Brand</h3>
+      <div class="chart-wrap"><canvas id="chartSite"></canvas></div>
+    </div>
+    <div class="glass chart-card">
+      <h3>Daily Spend Trend</h3>
+      <div class="chart-wrap"><canvas id="chartTrend"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Cross-tab -->
+  <div class="glass table-wrap" style="margin-bottom:20px">
+    <h3 style="font-size:.85rem;font-weight:600;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;padding:0 4px">Department &times; Website Summary</h3>
+    <table class="crosstab" id="crosstab"></table>
+  </div>
+
+  <!-- Detail Table -->
+  <div class="glass table-wrap">
+    <h3 style="font-size:.85rem;font-weight:600;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;padding:0 4px">All Expenses</h3>
+    <table id="detailTable">
+      <thead><tr>
+        <th data-key="date">Date <span class="sort-arrow">&#9650;</span></th>
+        <th data-key="person">Person <span class="sort-arrow">&#9650;</span></th>
+        <th data-key="department">Department <span class="sort-arrow">&#9650;</span></th>
+        <th data-key="website">Website <span class="sort-arrow">&#9650;</span></th>
+        <th data-key="category">Category <span class="sort-arrow">&#9650;</span></th>
+        <th data-key="description">Description <span class="sort-arrow">&#9650;</span></th>
+        <th data-key="amount">Unit Price <span class="sort-arrow">&#9650;</span></th>
+        <th data-key="total">Total <span class="sort-arrow">&#9650;</span></th>
+        <th data-key="type">Type <span class="sort-arrow">&#9650;</span></th>
+        <th data-key="status">Status <span class="sort-arrow">&#9650;</span></th>
+      </tr></thead>
+      <tbody id="detailBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+// ── Globals ──
+let rawData = [];
+let masterData = {};
+let charts = {};
+let sortState = { key: 'date', asc: false };
+const REFRESH_MS = 5 * 60 * 1000;
+
+const TYPE_COLORS = {
+  'OPEX': '#4CAF50',
+  'Pre-Operation': '#2196F3',
+  'Hard Assets': '#FF9800'
+};
+const TYPE_KEYS = ['Pre-Operation', 'Hard Assets', 'OPEX'];
+
+// ── Formatters ──
+function fmt(n) {
+  if (n == null || isNaN(n)) return '₱0.00';
+  return '₱' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtShort(n) {
+  const v = Math.abs(n);
+  if (v >= 1e9) return '₱' + (n / 1e9).toFixed(1) + 'B';
+  if (v >= 1e6) return '₱' + (n / 1e6).toFixed(1) + 'M';
+  if (v >= 1e3) return '₱' + (n / 1e3).toFixed(1) + 'K';
+  return '₱' + n.toFixed(0);
+}
+function fmtCount(n) { return Number(n).toLocaleString('en-US'); }
+
+// ── Data Fetching ──
+async function fetchAll() {
+  const [allRes, summaryRes, masterRes] = await Promise.all([
+    fetch('/api/all'), fetch('/api/summary'), fetch('/api/master')
+  ]);
+  if (!allRes.ok || !summaryRes.ok || !masterRes.ok) throw new Error('API request failed');
+  const all = await allRes.json();
+  const summary = await summaryRes.json();
+  const master = await masterRes.json();
+  return { all, summary, master };
+}
+
+async function loadData() {
+  const overlay = document.getElementById('loadingOverlay');
+  const banner = document.getElementById('errorBanner');
+  banner.style.display = 'none';
+  try {
+    const { all, summary, master } = await fetchAll();
+    rawData = all;
+    masterData = master;
+    overlay.classList.add('hidden');
+    populateFilters();
+    update();
+    updateMaster();
+    document.getElementById('lastUpdated').textContent =
+      'Last updated: ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  } catch (e) {
+    overlay.classList.add('hidden');
+    banner.textContent = 'Failed to load data. Please check your connection and try again. (' + e.message + ')';
+    banner.style.display = 'block';
+  }
+}
+
+// ── Filters ──
+function populateFilters() {
+  const fill = (id, key) => {
+    const sel = document.getElementById(id);
+    const cur = sel.value;
+    const vals = [...new Set(rawData.map(r => r[key]).filter(Boolean))].sort();
+    sel.innerHTML = '<option value="">All</option>' + vals.map(v => `<option value="${v}">${v}</option>`).join('');
+    sel.value = cur || '';
+  };
+  fill('filterType', 'type');
+  fill('filterDept', 'department');
+  fill('filterSite', 'website');
+  fill('filterPerson', 'person');
+}
+
+function getFiltered() {
+  const type = document.getElementById('filterType').value;
+  const dept = document.getElementById('filterDept').value;
+  const site = document.getElementById('filterSite').value;
+  const person = document.getElementById('filterPerson').value;
+  const from = document.getElementById('filterDateFrom').value;
+  const to = document.getElementById('filterDateTo').value;
+  return rawData.filter(r => {
+    if (type && r.type !== type) return false;
+    if (dept && r.department !== dept) return false;
+    if (site && r.website !== site) return false;
+    if (person && r.person !== person) return false;
+    if (from && r.date < from) return false;
+    if (to && r.date > to) return false;
+    return true;
+  });
+}
+
+// ── Update Everything ──
+function update() {
+  const data = getFiltered();
+  updateKPIs(data);
+  updateStatus(data);
+  updateChartDept(data);
+  updateChartType(data);
+  updateChartSite(data);
+  updateChartTrend(data);
+  updateCrosstab(data);
+  updateDetailTable(data);
+}
+
+function updateMaster() {
+  document.getElementById('masterRemittance').textContent = fmt(masterData['Total Remittance']);
+  document.getElementById('masterExpenses').textContent = fmt(masterData['Total Expenses']);
+  document.getElementById('masterBalance').textContent = fmt(masterData['Cash Balance']);
+}
+
+function updateKPIs(data) {
+  const sumByType = (t) => data.filter(r => r.type === t).reduce((s, r) => s + (Number(r.total) || 0), 0);
+  const countByType = (t) => data.filter(r => r.type === t).length;
+  const total = data.reduce((s, r) => s + (Number(r.total) || 0), 0);
+
+  document.getElementById('kpiTotal').textContent = fmt(total);
+  document.getElementById('kpiTotalCount').textContent = fmtCount(data.length) + ' items';
+  document.getElementById('kpiPreOp').textContent = fmt(sumByType('Pre-Operation'));
+  document.getElementById('kpiPreOpCount').textContent = fmtCount(countByType('Pre-Operation')) + ' items';
+  document.getElementById('kpiHard').textContent = fmt(sumByType('Hard Assets'));
+  document.getElementById('kpiHardCount').textContent = fmtCount(countByType('Hard Assets')) + ' items';
+  document.getElementById('kpiOpex').textContent = fmt(sumByType('OPEX'));
+  document.getElementById('kpiOpexCount').textContent = fmtCount(countByType('OPEX')) + ' items';
+}
+
+function updateStatus(data) {
+  const approved = data.filter(r => (r.status || '').toLowerCase() === 'approved');
+  const pending = data.filter(r => (r.status || '').toLowerCase() === 'pending');
+  document.getElementById('statusApproved').textContent = fmt(approved.reduce((s, r) => s + (Number(r.total) || 0), 0));
+  document.getElementById('statusApprovedCount').textContent = fmtCount(approved.length) + ' transactions';
+  document.getElementById('statusPending').textContent = fmt(pending.reduce((s, r) => s + (Number(r.total) || 0), 0));
+  document.getElementById('statusPendingCount').textContent = fmtCount(pending.length) + ' transactions';
+}
+
+// ── Chart Defaults ──
+const chartDefaults = {
+  color: 'rgba(255,255,255,0.7)',
+  font: { family: "'Inter', system-ui, sans-serif" }
+};
+Chart.defaults.color = chartDefaults.color;
+Chart.defaults.font.family = chartDefaults.font.family;
+
+function gridLineOpts() {
+  return { color: 'rgba(255,255,255,0.06)' };
+}
+function pesoAxis() {
+  return { ticks: { callback: v => fmtShort(v) }, grid: gridLineOpts() };
+}
+
+// ── Chart: Department (Horizontal Stacked Bar) ──
+function updateChartDept(data) {
+  const depts = [...new Set(data.map(r => r.department).filter(Boolean))].sort();
+  const datasets = TYPE_KEYS.map(type => ({
+    label: type,
+    data: depts.map(d => data.filter(r => r.department === d && r.type === type).reduce((s, r) => s + (Number(r.total) || 0), 0)),
+    backgroundColor: TYPE_COLORS[type],
+    borderRadius: 4,
+    barPercentage: 0.7
+  }));
+  const cfg = {
+    type: 'bar',
+    data: { labels: depts, datasets },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, position: 'top', labels: { boxWidth: 12, padding: 12 } },
+        datalabels: { display: false }
+      },
+      scales: {
+        x: { stacked: true, ...pesoAxis() },
+        y: { stacked: true, grid: { display: false } }
+      }
+    },
+    plugins: [ChartDataLabels]
+  };
+  renderChart('chartDept', cfg);
+}
+
+// ── Chart: Type Doughnut ──
+function updateChartType(data) {
+  const vals = TYPE_KEYS.map(t => data.filter(r => r.type === t).reduce((s, r) => s + (Number(r.total) || 0), 0));
+  const cfg = {
+    type: 'doughnut',
+    data: {
+      labels: TYPE_KEYS,
+      datasets: [{
+        data: vals,
+        backgroundColor: TYPE_KEYS.map(t => TYPE_COLORS[t]),
+        borderWidth: 0,
+        hoverOffset: 8
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '62%',
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12, padding: 16 } },
+        datalabels: {
+          color: '#fff', font: { weight: 600, size: 11 },
+          formatter: v => v > 0 ? fmtShort(v) : ''
+        }
+      }
+    },
+    plugins: [ChartDataLabels]
+  };
+  renderChart('chartType', cfg);
+}
+
+// ── Chart: Website Bar ──
+function updateChartSite(data) {
+  const sites = [...new Set(data.map(r => r.website).filter(Boolean))].sort();
+  const vals = sites.map(s => data.filter(r => r.website === s).reduce((a, r) => a + (Number(r.total) || 0), 0));
+  const cfg = {
+    type: 'bar',
+    data: {
+      labels: sites,
+      datasets: [{
+        label: 'Total',
+        data: vals,
+        backgroundColor: 'rgba(124,77,255,0.6)',
+        borderColor: '#7c4dff',
+        borderWidth: 1,
+        borderRadius: 6,
+        barPercentage: 0.65
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        datalabels: {
+          anchor: 'end', align: 'top', color: '#fff', font: { size: 10, weight: 600 },
+          formatter: v => v > 0 ? fmtShort(v) : ''
+        }
+      },
+      scales: {
+        y: pesoAxis(),
+        x: { grid: { display: false } }
+      }
+    },
+    plugins: [ChartDataLabels]
+  };
+  renderChart('chartSite', cfg);
+}
+
+// ── Chart: Daily Trend (Line + Area) ──
+function updateChartTrend(data) {
+  const byDate = {};
+  data.forEach(r => {
+    if (!r.date) return;
+    byDate[r.date] = (byDate[r.date] || 0) + (Number(r.total) || 0);
+  });
+  const dates = Object.keys(byDate).sort();
+  const vals = dates.map(d => byDate[d]);
+  const cfg = {
+    type: 'line',
+    data: {
+      labels: dates.map(d => { const p = d.split('-'); return (p[1] || '') + '/' + (p[2] || ''); }),
+      datasets: [{
+        label: 'Daily Spend',
+        data: vals,
+        borderColor: '#b388ff',
+        backgroundColor: 'rgba(179,136,255,0.12)',
+        fill: true,
+        tension: 0.35,
+        pointRadius: 3,
+        pointBackgroundColor: '#b388ff',
+        pointBorderWidth: 0,
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        datalabels: { display: false }
+      },
+      scales: {
+        y: pesoAxis(),
+        x: { grid: { display: false }, ticks: { maxRotation: 45, font: { size: 10 } } }
+      }
+    },
+    plugins: [ChartDataLabels]
+  };
+  renderChart('chartTrend', cfg);
+}
+
+function renderChart(id, cfg) {
+  if (charts[id]) { charts[id].destroy(); }
+  const ctx = document.getElementById(id).getContext('2d');
+  charts[id] = new Chart(ctx, cfg);
+}
+
+// ── Cross-tab ──
+function updateCrosstab(data) {
+  const depts = [...new Set(data.map(r => r.department).filter(Boolean))].sort();
+  const sites = [...new Set(data.map(r => r.website).filter(Boolean))].sort();
+  if (!depts.length || !sites.length) {
+    document.getElementById('crosstab').innerHTML = '<tr><td style="padding:20px;color:rgba(255,255,255,0.4)">No data</td></tr>';
+    return;
+  }
+  const lookup = {};
+  data.forEach(r => {
+    const k = (r.department || '') + '|||' + (r.website || '');
+    lookup[k] = (lookup[k] || 0) + (Number(r.total) || 0);
+  });
+  let html = '<thead><tr><th>Department</th>';
+  sites.forEach(s => html += `<th style="text-align:right">${s}</th>`);
+  html += '<th style="text-align:right">Total</th></tr></thead><tbody>';
+  const colTotals = sites.map(() => 0);
+  let grandTotal = 0;
+  depts.forEach(d => {
+    html += `<tr><td>${d}</td>`;
+    let rowSum = 0;
+    sites.forEach((s, i) => {
+      const v = lookup[d + '|||' + s] || 0;
+      colTotals[i] += v;
+      rowSum += v;
+      html += `<td>${v ? fmt(v) : '-'}</td>`;
+    });
+    grandTotal += rowSum;
+    html += `<td class="row-total">${fmt(rowSum)}</td></tr>`;
+  });
+  html += '<tr class="col-total"><td style="font-weight:700">Total</td>';
+  colTotals.forEach(v => html += `<td class="col-total">${fmt(v)}</td>`);
+  html += `<td class="row-total col-total">${fmt(grandTotal)}</td></tr>`;
+  html += '</tbody>';
+  document.getElementById('crosstab').innerHTML = html;
+}
+
+// ── Detail Table ──
+function updateDetailTable(data) {
+  const sorted = [...data].sort((a, b) => {
+    let va = a[sortState.key], vb = b[sortState.key];
+    if (sortState.key === 'amount' || sortState.key === 'total') {
+      va = Number(va) || 0; vb = Number(vb) || 0;
+    } else {
+      va = (va || '').toString().toLowerCase();
+      vb = (vb || '').toString().toLowerCase();
+    }
+    if (va < vb) return sortState.asc ? -1 : 1;
+    if (va > vb) return sortState.asc ? 1 : -1;
+    return 0;
+  });
+
+  const typeBadge = (t) => {
+    if (t === 'OPEX') return '<span class="badge badge-opex">OPEX</span>';
+    if (t === 'Pre-Operation') return '<span class="badge badge-preop">Pre-Op</span>';
+    if (t === 'Hard Assets') return '<span class="badge badge-hard">Hard Assets</span>';
+    return t || '';
+  };
+  const statusBadge = (s) => {
+    const sl = (s || '').toLowerCase();
+    if (sl === 'approved') return '<span class="badge badge-approved">Approved</span>';
+    if (sl === 'pending') return '<span class="badge badge-pending">Pending</span>';
+    return s || '';
+  };
+
+  document.getElementById('detailBody').innerHTML = sorted.map(r => `<tr>
+    <td>${r.date || ''}</td>
+    <td>${r.person || ''}</td>
+    <td>${r.department || ''}</td>
+    <td>${r.website || ''}</td>
+    <td>${r.category || ''}</td>
+    <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis">${r.description || ''}</td>
+    <td style="text-align:right">${fmt(r.amount)}</td>
+    <td style="text-align:right;font-weight:600">${fmt(r.total)}</td>
+    <td>${typeBadge(r.type)}</td>
+    <td>${statusBadge(r.status)}</td>
+  </tr>`).join('');
+
+  // Update header sort indicators
+  document.querySelectorAll('#detailTable th').forEach(th => {
+    th.classList.toggle('sorted', th.dataset.key === sortState.key);
+    const arrow = th.querySelector('.sort-arrow');
+    if (arrow && th.dataset.key === sortState.key) {
+      arrow.innerHTML = sortState.asc ? '&#9650;' : '&#9660;';
+    }
+  });
+}
+
+// ── Event Listeners ──
+document.querySelectorAll('#filterBar select, #filterBar input').forEach(el => {
+  el.addEventListener('change', update);
+});
+document.getElementById('btnReset').addEventListener('click', () => {
+  document.querySelectorAll('#filterBar select').forEach(s => s.value = '');
+  document.querySelectorAll('#filterBar input').forEach(i => i.value = '');
+  update();
+});
+document.querySelectorAll('#detailTable th').forEach(th => {
+  th.addEventListener('click', () => {
+    const key = th.dataset.key;
+    if (!key) return;
+    if (sortState.key === key) { sortState.asc = !sortState.asc; }
+    else { sortState.key = key; sortState.asc = true; }
+    update();
+  });
+});
+
+// ── Init ──
+loadData();
+setInterval(loadData, REFRESH_MS);
+</script>
+</body>
+</html>
