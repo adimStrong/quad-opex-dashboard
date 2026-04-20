@@ -241,6 +241,58 @@ app.get('/api/master', async (req, res) => {
   }
 });
 
+// API: Ads Fund (USDT Transfers)
+app.get('/api/adsfund', async (req, res) => {
+  try {
+    const rows = await getSheetData('USDT Transfers', 'A5:N50');
+    const headers = rows[0];
+    const data = rows.slice(1)
+      .filter(r => r[0] && r[0] !== '' && r[0] !== '0')
+      .map(r => ({
+        no: parseInt(r[0]) || 0,
+        date: r[1] || '',
+        time: r[2] || '',
+        recipient: r[3] || '',
+        department: r[4] || '',
+        category: r[5] || '',
+        usdt: parseAmount(r[6]),
+        orderNo: r[7] || '',
+        rate: parseAmount(r[8]),
+        php: parseAmount(r[9]),
+        rateTime: r[10] || '',
+        payment: r[11] || '',
+        wallet: r[12] || '',
+        network: r[13] || '',
+      }));
+
+    // Summary by recipient
+    const byRecipient = {};
+    data.forEach(r => {
+      if (r.recipient) {
+        if (!byRecipient[r.recipient]) byRecipient[r.recipient] = { usdt: 0, php: 0, count: 0 };
+        byRecipient[r.recipient].usdt += r.usdt;
+        byRecipient[r.recipient].php += r.php;
+        byRecipient[r.recipient].count++;
+      }
+    });
+
+    const totalUsdt = data.reduce((s, r) => s + r.usdt, 0);
+    const totalPhp = data.reduce((s, r) => s + r.php, 0);
+
+    res.json({
+      transfers: data,
+      totalUsdt,
+      totalPhp,
+      avgRate: totalUsdt > 0 ? totalPhp / totalUsdt : 0,
+      count: data.length,
+      byRecipient,
+    });
+  } catch (err) {
+    console.error('Ads Fund error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // API: Full Master Ledger transactions (fund flow)
 app.get('/api/ledger', async (req, res) => {
   try {

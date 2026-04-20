@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QUAD OPEX Dashboard</title>
+<title>QUAD Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -29,7 +29,6 @@ body{
 }
 .container{max-width:1440px;margin:0 auto}
 
-/* Glass card */
 .glass{
   background:var(--card-bg);
   backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
@@ -40,111 +39,67 @@ body{
 }
 .glass:hover{background:var(--card-hover);transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,0.3)}
 
-/* Header */
 .header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:24px}
 .header h1{font-size:1.8rem;font-weight:800;background:linear-gradient(135deg,#b388ff,#7c4dff,#651fff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-0.5px}
 .header-meta{display:flex;align-items:center;gap:16px;font-size:.82rem;color:var(--text-dim)}
 .header-meta .dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
-/* Grids */
 .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px}
 .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}
 .grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:20px}
-.grid-2x2{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto auto;gap:16px;margin-bottom:20px}
 
-/* KPI cards */
 .kpi{text-align:center;padding:24px 16px}
 .kpi .kpi-label{font-size:.75rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-dim);margin-bottom:8px;font-weight:600}
 .kpi .kpi-value{font-size:1.65rem;font-weight:700;letter-spacing:-0.5px}
 .kpi .kpi-sub{font-size:.78rem;color:var(--text-dim);margin-top:6px}
 .kpi .kpi-icon{width:44px;height:44px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:1.3rem}
 
-/* Status cards */
-.status-card{display:flex;align-items:center;gap:16px;padding:20px 24px}
-.status-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
-.status-info .status-label{font-size:.78rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);font-weight:600}
-.status-info .status-value{font-size:1.35rem;font-weight:700;margin-top:2px}
-.status-info .status-count{font-size:.75rem;color:var(--text-dim);margin-top:2px}
-
-/* Filter bar */
-.filter-bar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;padding:20px;margin-bottom:20px}
-.filter-group{display:flex;flex-direction:column;gap:4px;flex:1;min-width:150px}
-.filter-group label{font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);font-weight:600}
-.filter-group select,.filter-group input{
-  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);
-  color:#fff;padding:8px 12px;border-radius:10px;font-size:.82rem;font-family:inherit;
-  outline:none;transition:border-color .2s;
-}
-.filter-group select:focus,.filter-group input:focus{border-color:var(--purple)}
-.filter-group select option{background:#2d1b69;color:#fff}
-.btn-reset{
-  background:linear-gradient(135deg,#7c4dff,#651fff);color:#fff;border:none;
-  padding:9px 20px;border-radius:10px;font-size:.82rem;font-weight:600;cursor:pointer;
-  font-family:inherit;transition:opacity .2s;align-self:flex-end;
-}
-.btn-reset:hover{opacity:.85}
-
-/* Chart containers */
 .chart-card{padding:20px}
 .chart-card h3{font-size:.85rem;font-weight:600;margin-bottom:14px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px}
 .chart-wrap{position:relative;width:100%;min-height:280px}
 .chart-wrap canvas{width:100%!important}
 
-/* Tables */
 .table-wrap{overflow-x:auto;margin-bottom:20px}
 table{width:100%;border-collapse:collapse;font-size:.78rem}
-th{
-  text-align:left;padding:10px 12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;
-  color:var(--text-dim);font-size:.7rem;border-bottom:1px solid rgba(255,255,255,0.1);
-  cursor:pointer;user-select:none;white-space:nowrap;
-}
+th{text-align:left;padding:10px 12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);font-size:.7rem;border-bottom:1px solid rgba(255,255,255,0.1);cursor:pointer;user-select:none;white-space:nowrap}
 th:hover{color:#fff}
 th .sort-arrow{margin-left:4px;opacity:.4;font-size:.65rem}
 th.sorted .sort-arrow{opacity:1}
 td{padding:9px 12px;border-bottom:1px solid rgba(255,255,255,0.05);white-space:nowrap}
 tr:hover td{background:rgba(255,255,255,0.04)}
 .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.7rem;font-weight:600}
-.badge-opex{background:rgba(76,175,80,0.2);color:#81c784}
-.badge-preop{background:rgba(33,150,243,0.2);color:#64b5f6}
-.badge-hard{background:rgba(255,152,0,0.2);color:#ffb74d}
-.badge-approved{background:rgba(76,175,80,0.2);color:#81c784}
-.badge-pending{background:rgba(255,193,7,0.2);color:#ffd54f}
+.badge-credit{background:rgba(76,175,80,0.2);color:#81c784}
+.badge-debit{background:rgba(244,67,54,0.2);color:#ef9a9a}
 
-/* Cross-tab */
-.crosstab th{font-size:.68rem}
-.crosstab td{font-size:.75rem;text-align:right}
-.crosstab td:first-child{text-align:left;font-weight:600}
-.crosstab .row-total{font-weight:700;background:rgba(255,255,255,0.04)}
-.crosstab .col-total{font-weight:700;background:rgba(255,255,255,0.04)}
+.section-title{font-size:1.1rem;font-weight:700;margin:32px 0 16px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:8px}
 
-/* Loading overlay */
-.loading-overlay{
-  position:fixed;top:0;left:0;width:100%;height:100%;
-  background:rgba(26,0,51,0.92);display:flex;flex-direction:column;
-  align-items:center;justify-content:center;z-index:9999;
-  transition:opacity .4s;
-}
+.loading-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(26,0,51,0.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .4s}
 .loading-overlay.hidden{opacity:0;pointer-events:none}
 .spinner{width:48px;height:48px;border:3px solid rgba(255,255,255,0.1);border-top-color:#7c4dff;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading-text{margin-top:16px;color:var(--text-dim);font-size:.9rem}
+.error-banner{background:rgba(244,67,54,0.15);border:1px solid rgba(244,67,54,0.3);border-radius:12px;padding:16px 20px;margin-bottom:20px;display:none;font-size:.85rem;color:#ef9a9a}
 
-/* Error */
-.error-banner{
-  background:rgba(244,67,54,0.15);border:1px solid rgba(244,67,54,0.3);
-  border-radius:12px;padding:16px 20px;margin-bottom:20px;display:none;
-  font-size:.85rem;color:#ef9a9a;
-}
-
-/* Responsive */
 @media(max-width:1200px){.grid-4{grid-template-columns:repeat(2,1fr)}.grid-3{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:768px){
-  .grid-4,.grid-3,.grid-2,.grid-2x2{grid-template-columns:1fr}
+  .grid-4,.grid-3,.grid-2{grid-template-columns:1fr}
   .header{flex-direction:column;align-items:flex-start}
   body{padding:12px}
   .kpi .kpi-value{font-size:1.3rem}
 }
+
+/* Executive section */
+.section-title-exec{
+  font-size:1.25rem;font-weight:800;margin:48px 0 20px;
+  background:linear-gradient(135deg,#b388ff,#7c4dff);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  text-transform:uppercase;letter-spacing:1.5px;
+  border-bottom:2px solid rgba(124,77,255,0.3);padding-bottom:10px;
+}
+.daily-total-row td{font-weight:700;border-top:2px solid rgba(124,77,255,0.3);background:rgba(124,77,255,0.08)!important}
+.running-total{color:var(--text-dim);font-size:.75rem}
+.metric-highlight{font-size:.85rem;color:var(--text-dim);margin-top:4px}
 </style>
 </head>
 <body>
@@ -157,7 +112,7 @@ tr:hover td{background:rgba(255,255,255,0.04)}
 <div class="container">
   <!-- Header -->
   <div class="header">
-    <h1>QUAD OPEX Dashboard</h1>
+    <h1>QUAD Dashboard</h1>
     <div class="header-meta">
       <span><span class="dot"></span> Live</span>
       <span id="lastUpdated">Last updated: --</span>
@@ -165,166 +120,221 @@ tr:hover td{background:rgba(255,255,255,0.04)}
     </div>
   </div>
 
-  <!-- Error banner -->
   <div class="error-banner" id="errorBanner"></div>
 
-  <!-- Master Ledger -->
-  <div class="grid-3" id="masterRow">
+  <!-- ══════════════════════════════════════ -->
+  <!-- FUND IN vs COST (Combined Overview)  -->
+  <!-- ══════════════════════════════════════ -->
+
+  <!-- Top KPIs: Fund In | Cost | Balance -->
+  <div class="grid-3" style="margin-bottom:20px">
+    <div class="glass kpi">
+      <div class="kpi-icon" style="background:rgba(76,175,80,0.15);color:var(--green)">&#9650;</div>
+      <div class="kpi-label">Fund In</div>
+      <div class="kpi-value" id="totalFundsIn" style="color:#4CAF50">--</div>
+      <div class="kpi-sub" id="fundsInCount">-- remittances</div>
+    </div>
+    <div class="glass kpi">
+      <div class="kpi-icon" style="background:rgba(244,67,54,0.15);color:var(--red)">&#9660;</div>
+      <div class="kpi-label">Total Cost</div>
+      <div class="kpi-value" id="totalSpent" style="color:#f44336">--</div>
+      <div class="kpi-sub" id="spentSub">Pre-Op + Hard Assets + Ads Fund</div>
+    </div>
     <div class="glass kpi">
       <div class="kpi-icon" style="background:rgba(33,150,243,0.15);color:var(--blue)">&#8369;</div>
-      <div class="kpi-label">Total Remittance</div>
-      <div class="kpi-value" id="masterRemittance">--</div>
-    </div>
-    <div class="glass kpi">
-      <div class="kpi-icon" style="background:rgba(244,67,54,0.15);color:var(--red)">&#8369;</div>
-      <div class="kpi-label">Total Expenses</div>
-      <div class="kpi-value" id="masterExpenses">--</div>
-    </div>
-    <div class="glass kpi">
-      <div class="kpi-icon" style="background:rgba(76,175,80,0.15);color:var(--green)">&#8369;</div>
       <div class="kpi-label">Cash Balance</div>
-      <div class="kpi-value" id="masterBalance">--</div>
+      <div class="kpi-value" id="cashBalance" style="color:#2196F3">--</div>
+      <div class="kpi-sub">Fund In - Cost</div>
     </div>
   </div>
 
-  <!-- KPI Cards -->
-  <div class="grid-4" id="kpiRow">
-    <div class="glass kpi">
-      <div class="kpi-icon" style="background:rgba(156,39,176,0.15);color:var(--purple)">&#931;</div>
-      <div class="kpi-label">Total All Expenses</div>
-      <div class="kpi-value" id="kpiTotal">--</div>
-      <div class="kpi-sub" id="kpiTotalCount">-- items</div>
-    </div>
+  <!-- Second Row: Cost Breakdown -->
+  <div class="grid-3" style="margin-bottom:20px">
     <div class="glass kpi">
       <div class="kpi-icon" style="background:rgba(33,150,243,0.15);color:var(--blue)">&#9670;</div>
       <div class="kpi-label">Pre-Operation</div>
-      <div class="kpi-value" id="kpiPreOp">--</div>
-      <div class="kpi-sub" id="kpiPreOpCount">-- items</div>
+      <div class="kpi-value" id="dsPreop">--</div>
+      <div class="kpi-sub" id="dsPreopCount">-- items</div>
     </div>
     <div class="glass kpi">
       <div class="kpi-icon" style="background:rgba(255,152,0,0.15);color:var(--orange)">&#9646;</div>
       <div class="kpi-label">Hard Assets</div>
-      <div class="kpi-value" id="kpiHard">--</div>
-      <div class="kpi-sub" id="kpiHardCount">-- items</div>
+      <div class="kpi-value" id="dsHard">--</div>
+      <div class="kpi-sub" id="dsHardCount">-- items</div>
     </div>
     <div class="glass kpi">
-      <div class="kpi-icon" style="background:rgba(76,175,80,0.15);color:var(--green)">&#9632;</div>
-      <div class="kpi-label">OPEX</div>
-      <div class="kpi-value" id="kpiOpex">--</div>
-      <div class="kpi-sub" id="kpiOpexCount">-- items</div>
+      <div class="kpi-icon" style="background:rgba(156,39,176,0.15);color:var(--purple)">&#8383;</div>
+      <div class="kpi-label">Ads Fund</div>
+      <div class="kpi-value" id="dsAds">--</div>
+      <div class="kpi-sub" id="dsAdsCount">-- transfers</div>
     </div>
   </div>
 
-  <!-- Status Cards -->
-  <div class="grid-2" id="statusRow">
-    <div class="glass status-card">
-      <div class="status-dot" style="background:var(--green)"></div>
-      <div class="status-info">
-        <div class="status-label">Approved</div>
-        <div class="status-value" id="statusApproved">--</div>
-        <div class="status-count" id="statusApprovedCount">-- transactions</div>
-      </div>
+  <!-- Charts Row 1: Waterfall + Fund In vs Cost Side by Side -->
+  <div class="grid-2" style="margin-bottom:20px">
+    <div class="glass chart-card">
+      <h3>Fund In vs Cost vs Remaining</h3>
+      <div class="chart-wrap" style="min-height:300px"><canvas id="chartDsWaterfall"></canvas></div>
     </div>
-    <div class="glass status-card">
-      <div class="status-dot" style="background:var(--yellow)"></div>
-      <div class="status-info">
-        <div class="status-label">Pending</div>
-        <div class="status-value" id="statusPending">--</div>
-        <div class="status-count" id="statusPendingCount">-- transactions</div>
-      </div>
+    <div class="glass chart-card">
+      <h3>Where the Money Goes</h3>
+      <div class="chart-wrap" style="max-width:340px;margin:0 auto"><canvas id="chartDsCategory"></canvas></div>
     </div>
   </div>
 
-  <!-- Filter Bar -->
-  <div class="glass filter-bar" id="filterBar">
-    <div class="filter-group">
-      <label>Expense Type</label>
-      <select id="filterType"><option value="">All</option></select>
-    </div>
-    <div class="filter-group">
-      <label>Department</label>
-      <select id="filterDept"><option value="">All</option></select>
-    </div>
-    <div class="filter-group">
-      <label>Website</label>
-      <select id="filterSite"><option value="">All</option></select>
-    </div>
-    <div class="filter-group">
-      <label>Person</label>
-      <select id="filterPerson"><option value="">All</option></select>
-    </div>
-    <div class="filter-group">
-      <label>Date From</label>
-      <input type="date" id="filterDateFrom">
-    </div>
-    <div class="filter-group">
-      <label>Date To</label>
-      <input type="date" id="filterDateTo">
-    </div>
-    <button class="btn-reset" id="btnReset">Reset</button>
-  </div>
-
-  <!-- Charts 2x2 -->
-  <div class="grid-2x2">
+  <!-- Charts Row 2: Fund In vs Cost by Day + Site Funding -->
+  <div class="grid-2" style="margin-bottom:20px">
     <div class="glass chart-card">
-      <h3>Expenses by Department</h3>
-      <div class="chart-wrap"><canvas id="chartDept"></canvas></div>
+      <h3>Daily: Fund In vs Cost</h3>
+      <div class="chart-wrap" style="min-height:320px"><canvas id="chartDsTrend"></canvas></div>
     </div>
     <div class="glass chart-card">
-      <h3>Expense Type Breakdown</h3>
-      <div class="chart-wrap" style="max-width:340px;margin:0 auto"><canvas id="chartType"></canvas></div>
-    </div>
-    <div class="glass chart-card">
-      <h3>Expenses by Website / Brand</h3>
-      <div class="chart-wrap"><canvas id="chartSite"></canvas></div>
-    </div>
-    <div class="glass chart-card">
-      <h3>Daily Spend Trend</h3>
-      <div class="chart-wrap"><canvas id="chartTrend"></canvas></div>
+      <h3>Funding by Site</h3>
+      <div class="chart-wrap" style="max-width:340px;margin:0 auto"><canvas id="chartSitePie"></canvas></div>
     </div>
   </div>
 
-  <!-- Cross-tab -->
+  <!-- Site Cards -->
+  <div class="grid-4" id="siteCards" style="margin-bottom:20px"></div>
+
+  <!-- Monthly Summary (hidden if only 1 month) -->
+  <div class="glass chart-card" id="monthlyContainer" style="margin-bottom:20px">
+    <h3>Monthly Summary</h3>
+    <div class="chart-wrap" style="min-height:280px"><canvas id="chartDsMonthly"></canvas></div>
+  </div>
+
+  <!-- Daily Spend Breakdown Table -->
   <div class="glass table-wrap" style="margin-bottom:20px">
-    <h3 style="font-size:.85rem;font-weight:600;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;padding:0 4px">Department &times; Website Summary</h3>
-    <table class="crosstab" id="crosstab"></table>
-  </div>
-
-  <!-- Detail Table -->
-  <div class="glass table-wrap">
-    <h3 style="font-size:.85rem;font-weight:600;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;padding:0 4px">All Expenses</h3>
-    <table id="detailTable">
+    <h3 style="font-size:.85rem;font-weight:600;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;padding:0 4px">Daily Spend Breakdown</h3>
+    <table id="dsTable">
       <thead><tr>
-        <th data-key="date">Date <span class="sort-arrow">&#9650;</span></th>
-        <th data-key="person">Person <span class="sort-arrow">&#9650;</span></th>
-        <th data-key="department">Department <span class="sort-arrow">&#9650;</span></th>
-        <th data-key="website">Website <span class="sort-arrow">&#9650;</span></th>
-        <th data-key="category">Category <span class="sort-arrow">&#9650;</span></th>
-        <th data-key="description">Description <span class="sort-arrow">&#9650;</span></th>
-        <th data-key="amount">Unit Price <span class="sort-arrow">&#9650;</span></th>
-        <th data-key="total">Total <span class="sort-arrow">&#9650;</span></th>
-        <th data-key="type">Type <span class="sort-arrow">&#9650;</span></th>
-        <th data-key="status">Status <span class="sort-arrow">&#9650;</span></th>
+        <th>Date</th>
+        <th style="text-align:right;color:#4CAF50">Fund In</th>
+        <th style="text-align:right;color:#2196F3">Pre-Op</th>
+        <th style="text-align:right;color:#FF9800">Hard Assets</th>
+        <th style="text-align:right;color:#9C27B0">Ads Fund</th>
+        <th style="text-align:right;color:#f44336">Daily Cost</th>
+        <th style="text-align:right">Balance</th>
       </tr></thead>
-      <tbody id="detailBody"></tbody>
+      <tbody id="dsBody"></tbody>
     </table>
   </div>
+
+  <!-- Ledger Table -->
+  <div class="section-title">Remittance Records</div>
+  <div class="glass table-wrap">
+    <table id="ledgerTable">
+      <thead><tr>
+        <th data-key="no"># <span class="sort-arrow">&#9650;</span></th>
+        <th data-key="date">Date <span class="sort-arrow">&#9650;</span></th>
+        <th data-key="type">Type <span class="sort-arrow">&#9650;</span></th>
+        <th data-key="source">Source <span class="sort-arrow">&#9650;</span></th>
+        <th data-key="description">Description <span class="sort-arrow">&#9650;</span></th>
+        <th data-key="person">Person <span class="sort-arrow">&#9650;</span></th>
+        <th data-key="amount">Amount <span class="sort-arrow">&#9650;</span></th>
+        <th data-key="balance">Balance <span class="sort-arrow">&#9650;</span></th>
+      </tr></thead>
+      <tbody id="ledgerBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Pre-Operational Expenses -->
+  <div class="section-title">Liquidation - Pre-Operational Expenses</div>
+  <div class="grid-2" style="margin-bottom:20px">
+    <div class="glass kpi">
+      <div class="kpi-icon" style="background:rgba(33,150,243,0.15);color:var(--blue)">&#9670;</div>
+      <div class="kpi-label">Total Pre-Op Expenses</div>
+      <div class="kpi-value" id="preopTotal">--</div>
+      <div class="kpi-sub" id="preopCount">-- items</div>
+    </div>
+    <div class="glass chart-card">
+      <h3>Pre-Op by Department</h3>
+      <div class="chart-wrap" style="min-height:220px"><canvas id="chartPreopDept"></canvas></div>
+    </div>
+  </div>
+  <div class="glass table-wrap">
+    <table id="preopTable">
+      <thead><tr>
+        <th>Date</th><th>Employee</th><th>Department</th><th>Category</th>
+        <th>Description</th><th>Txn #</th><th>Qty</th><th>Amount</th><th>Total</th><th>Payment</th><th>Status</th>
+      </tr></thead>
+      <tbody id="preopBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Hard Assets -->
+  <div class="section-title">Liquidation - Hard Assets</div>
+  <div class="grid-2" style="margin-bottom:20px">
+    <div class="glass kpi">
+      <div class="kpi-icon" style="background:rgba(255,152,0,0.15);color:var(--orange)">&#9646;</div>
+      <div class="kpi-label">Total Hard Assets</div>
+      <div class="kpi-value" id="hardTotal">--</div>
+      <div class="kpi-sub" id="hardCount">-- items</div>
+    </div>
+    <div class="glass chart-card">
+      <h3>Hard Assets by Department</h3>
+      <div class="chart-wrap" style="min-height:220px"><canvas id="chartHardDept"></canvas></div>
+    </div>
+  </div>
+  <div class="glass table-wrap">
+    <table id="hardTable">
+      <thead><tr>
+        <th>Date</th><th>Employee</th><th>Department</th><th>Category</th>
+        <th>Description</th><th>Txn #</th><th>Qty</th><th>Amount</th><th>Total</th><th>Payment</th><th>Status</th>
+      </tr></thead>
+      <tbody id="hardBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Ads Fund (USDT Transfers) -->
+  <div class="section-title">Ads Fund - USDT Transfers</div>
+  <div class="grid-3" style="margin-bottom:20px">
+    <div class="glass kpi">
+      <div class="kpi-icon" style="background:rgba(156,39,176,0.15);color:var(--purple)">&#8383;</div>
+      <div class="kpi-label">Total USDT Sent</div>
+      <div class="kpi-value" id="adsUsdt">--</div>
+      <div class="kpi-sub" id="adsCount">-- transfers</div>
+    </div>
+    <div class="glass kpi">
+      <div class="kpi-icon" style="background:rgba(255,152,0,0.15);color:var(--orange)">&#8369;</div>
+      <div class="kpi-label">PHP Equivalent</div>
+      <div class="kpi-value" id="adsPhp">--</div>
+      <div class="kpi-sub" id="adsRate">Avg rate: --</div>
+    </div>
+    <div class="glass chart-card" style="padding:16px">
+      <h3>By Recipient</h3>
+      <div class="chart-wrap" style="min-height:220px"><canvas id="chartAdsRecipient"></canvas></div>
+    </div>
+  </div>
+  <div class="glass table-wrap">
+    <table id="adsTable">
+      <thead><tr>
+        <th>#</th><th>Date</th><th>Time</th><th>Recipient</th>
+        <th>USDT</th><th>Rate</th><th>PHP Equiv</th><th>Payment</th><th>Wallet</th><th>Network</th>
+      </tr></thead>
+      <tbody id="adsBody"></tbody>
+    </table>
+  </div>
+
 </div>
 
 <script>
 // ── Globals ──
-let rawData = [];
-let masterData = {};
+let fundFlowData = {};
+let ledgerData = [];
+let preopData = [];
+let hardData = [];
+let adsFundData = {};
 let charts = {};
-let sortState = { key: 'date', asc: false };
+let sortState = { key: 'no', asc: true };
 const REFRESH_MS = 5 * 60 * 1000;
 
-const TYPE_COLORS = {
-  'OPEX': '#4CAF50',
-  'Pre-Operation': '#2196F3',
-  'Hard Assets': '#FF9800'
+const SITE_COLORS = {
+  'Cow88 (COW)': '#FF6B35',
+  'Time to Bet (T2B)': '#2196F3',
+  'Roll Em (RLM)': '#9C27B0',
+  'Win For Life (WFL)': '#4CAF50',
 };
-const TYPE_KEYS = ['Pre-Operation', 'Hard Assets', 'OPEX'];
 
 // ── Formatters ──
 function parseVal(v) {
@@ -347,314 +357,144 @@ function fmtShort(n) {
 function fmtCount(n) { return Number(n).toLocaleString('en-US'); }
 
 // ── Data Fetching ──
-async function fetchAll() {
-  const [allRes, summaryRes, masterRes] = await Promise.all([
-    fetch('/api/all'), fetch('/api/summary'), fetch('/api/master')
-  ]);
-  if (!allRes.ok || !summaryRes.ok || !masterRes.ok) throw new Error('API request failed');
-  const all = await allRes.json();
-  const summary = await summaryRes.json();
-  const master = await masterRes.json();
-  return { all, summary, master };
-}
-
 async function loadData() {
   const overlay = document.getElementById('loadingOverlay');
   const banner = document.getElementById('errorBanner');
   banner.style.display = 'none';
   try {
-    const { all, summary, master } = await fetchAll();
-    rawData = all;
-    masterData = master;
+    const [fundRes, ledgerRes, preopRes, hardRes, adsRes] = await Promise.all([
+      fetch('/api/fundflow'),
+      fetch('/api/ledger'),
+      fetch('/api/preop'),
+      fetch('/api/hardassets'),
+      fetch('/api/adsfund')
+    ]);
+    if (!fundRes.ok || !ledgerRes.ok) throw new Error('API request failed');
+    fundFlowData = await fundRes.json();
+    ledgerData = await ledgerRes.json();
+    preopData = preopRes.ok ? await preopRes.json() : [];
+    hardData = hardRes.ok ? await hardRes.json() : [];
+    adsFundData = adsRes.ok ? await adsRes.json() : {};
     overlay.classList.add('hidden');
-    populateFilters();
-    update();
-    updateMaster();
+    updateAll();
     document.getElementById('lastUpdated').textContent =
       'Last updated: ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   } catch (e) {
     overlay.classList.add('hidden');
-    banner.textContent = 'Failed to load data. Please check your connection and try again. (' + e.message + ')';
+    banner.textContent = 'Failed to load data: ' + e.message;
     banner.style.display = 'block';
   }
 }
 
-// ── Filters ──
-function populateFilters() {
-  const fill = (id, key) => {
-    const sel = document.getElementById(id);
-    const cur = sel.value;
-    const vals = [...new Set(rawData.map(r => r[key]).filter(Boolean))].sort();
-    sel.innerHTML = '<option value="">All</option>' + vals.map(v => `<option value="${v}">${v}</option>`).join('');
-    sel.value = cur || '';
-  };
-  fill('filterType', 'type');
-  fill('filterDept', 'department');
-  fill('filterSite', 'website');
-  fill('filterPerson', 'person');
+function updateAll() {
+  updateKPIs();
+  updateSiteCards();
+  updateChartSitePie();
+  updateLedgerTable();
+  updatePreop();
+  updateHard();
+  updateAdsFund();
+  updateDailySpend();
 }
 
-function getFiltered() {
-  const type = document.getElementById('filterType').value;
-  const dept = document.getElementById('filterDept').value;
-  const site = document.getElementById('filterSite').value;
-  const person = document.getElementById('filterPerson').value;
-  const from = document.getElementById('filterDateFrom').value;
-  const to = document.getElementById('filterDateTo').value;
-  return rawData.filter(r => {
-    if (type && r.type !== type) return false;
-    if (dept && r.department !== dept) return false;
-    if (site && r.website !== site) return false;
-    if (person && r.person !== person) return false;
-    if (from && r.date < from) return false;
-    if (to && r.date > to) return false;
-    return true;
-  });
+// ── KPIs ──
+function updateKPIs() {
+  const d = fundFlowData;
+  document.getElementById('totalFundsIn').textContent = fmt(d.totalRemittance);
+  const creditCount = ledgerData.filter(r => r.type === 'CREDIT').length;
+  document.getElementById('fundsInCount').textContent = fmtCount(creditCount) + ' remittances';
+
+  const preopTotal = preopData.reduce((s, r) => s + (r.total || 0), 0);
+  const hardTotal = hardData.filter(r => r.total > 0).reduce((s, r) => s + (r.total || 0), 0);
+  const adsTotal = adsFundData.totalPhp || 0;
+  const totalSpent = preopTotal + hardTotal + adsTotal;
+  document.getElementById('totalSpent').textContent = fmt(totalSpent);
+  document.getElementById('spentSub').textContent = `Pre-Op + Hard Assets + Ads Fund`;
+  document.getElementById('cashBalance').textContent = fmt(d.totalRemittance - totalSpent);
+
+  // Cost breakdown cards
+  document.getElementById('dsPreop').textContent = fmt(preopTotal);
+  document.getElementById('dsPreopCount').textContent = fmtCount(preopData.length) + ' items';
+  document.getElementById('dsHard').textContent = fmt(hardTotal);
+  document.getElementById('dsHardCount').textContent = fmtCount(hardData.filter(r => r.total > 0).length) + ' items';
+  document.getElementById('dsAds').textContent = fmt(adsTotal);
+  document.getElementById('dsAdsCount').textContent = fmtCount((adsFundData.transfers || []).length) + ' transfers';
 }
 
-// ── Update Everything ──
-function update() {
-  const data = getFiltered();
-  updateKPIs(data);
-  updateStatus(data);
-  updateChartDept(data);
-  updateChartType(data);
-  updateChartSite(data);
-  updateChartTrend(data);
-  updateCrosstab(data);
-  updateDetailTable(data);
-}
-
-function updateMaster() {
-  document.getElementById('masterRemittance').textContent = fmt(masterData['Total Remittance']);
-  document.getElementById('masterExpenses').textContent = fmt(masterData['Total Expenses']);
-  document.getElementById('masterBalance').textContent = fmt(masterData['Cash Balance']);
-}
-
-function updateKPIs(data) {
-  const sumByType = (t) => data.filter(r => r.type === t).reduce((s, r) => s + (Number(r.total) || 0), 0);
-  const countByType = (t) => data.filter(r => r.type === t).length;
-  const total = data.reduce((s, r) => s + (Number(r.total) || 0), 0);
-
-  document.getElementById('kpiTotal').textContent = fmt(total);
-  document.getElementById('kpiTotalCount').textContent = fmtCount(data.length) + ' items';
-  document.getElementById('kpiPreOp').textContent = fmt(sumByType('Pre-Operation'));
-  document.getElementById('kpiPreOpCount').textContent = fmtCount(countByType('Pre-Operation')) + ' items';
-  document.getElementById('kpiHard').textContent = fmt(sumByType('Hard Assets'));
-  document.getElementById('kpiHardCount').textContent = fmtCount(countByType('Hard Assets')) + ' items';
-  document.getElementById('kpiOpex').textContent = fmt(sumByType('OPEX'));
-  document.getElementById('kpiOpexCount').textContent = fmtCount(countByType('OPEX')) + ' items';
-}
-
-function updateStatus(data) {
-  const approved = data.filter(r => (r.status || '').toLowerCase() === 'approved');
-  const pending = data.filter(r => (r.status || '').toLowerCase() === 'pending');
-  document.getElementById('statusApproved').textContent = fmt(approved.reduce((s, r) => s + (Number(r.total) || 0), 0));
-  document.getElementById('statusApprovedCount').textContent = fmtCount(approved.length) + ' transactions';
-  document.getElementById('statusPending').textContent = fmt(pending.reduce((s, r) => s + (Number(r.total) || 0), 0));
-  document.getElementById('statusPendingCount').textContent = fmtCount(pending.length) + ' transactions';
+// ── Site Cards ──
+function updateSiteCards() {
+  const sites = fundFlowData.bySite || {};
+  const container = document.getElementById('siteCards');
+  container.innerHTML = Object.entries(sites).map(([name, amount]) => {
+    const color = SITE_COLORS[name] || '#7c4dff';
+    const pct = fundFlowData.totalRemittance > 0 ? ((amount / fundFlowData.totalRemittance) * 100).toFixed(1) : 0;
+    return `<div class="glass kpi">
+      <div class="kpi-icon" style="background:${color}22;color:${color}">&#9679;</div>
+      <div class="kpi-label">${name}</div>
+      <div class="kpi-value" style="color:${color}">${fmt(amount)}</div>
+      <div class="kpi-sub">${pct}% of total</div>
+    </div>`;
+  }).join('');
 }
 
 // ── Chart Defaults ──
-const chartDefaults = {
-  color: 'rgba(255,255,255,0.7)',
-  font: { family: "'Inter', system-ui, sans-serif" }
-};
-Chart.defaults.color = chartDefaults.color;
-Chart.defaults.font.family = chartDefaults.font.family;
+Chart.defaults.color = 'rgba(255,255,255,0.7)';
+Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+function gridOpts() { return { color: 'rgba(255,255,255,0.06)' }; }
+function pesoAxis() { return { ticks: { callback: v => fmtShort(v) }, grid: gridOpts() }; }
 
-function gridLineOpts() {
-  return { color: 'rgba(255,255,255,0.06)' };
-}
-function pesoAxis() {
-  return { ticks: { callback: v => fmtShort(v) }, grid: gridLineOpts() };
+function renderChart(id, cfg) {
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id).getContext('2d'), cfg);
 }
 
-// ── Chart: Department (Horizontal Stacked Bar) ──
-function updateChartDept(data) {
-  const depts = [...new Set(data.map(r => r.department).filter(Boolean))].sort();
-  const datasets = TYPE_KEYS.map(type => ({
-    label: type,
-    data: depts.map(d => data.filter(r => r.department === d && r.type === type).reduce((s, r) => s + (Number(r.total) || 0), 0)),
-    backgroundColor: TYPE_COLORS[type],
-    borderRadius: 4,
-    barPercentage: 0.7
-  }));
-  const cfg = {
-    type: 'bar',
-    data: { labels: depts, datasets },
-    options: {
-      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { display: true, position: 'top', labels: { boxWidth: 12, padding: 12 } },
-        datalabels: { display: false }
-      },
-      scales: {
-        x: { stacked: true, ...pesoAxis() },
-        y: { stacked: true, grid: { display: false } }
-      }
-    },
-    plugins: [ChartDataLabels]
-  };
-  renderChart('chartDept', cfg);
-}
-
-// ── Chart: Type Doughnut ──
-function updateChartType(data) {
-  const vals = TYPE_KEYS.map(t => data.filter(r => r.type === t).reduce((s, r) => s + (Number(r.total) || 0), 0));
-  const cfg = {
+// ── Chart: Funding by Site (Doughnut) ──
+function updateChartSitePie() {
+  const sites = fundFlowData.bySite || {};
+  const labels = Object.keys(sites);
+  const values = Object.values(sites);
+  const colors = labels.map(l => SITE_COLORS[l] || '#7c4dff');
+  renderChart('chartSitePie', {
     type: 'doughnut',
-    data: {
-      labels: TYPE_KEYS,
-      datasets: [{
-        data: vals,
-        backgroundColor: TYPE_KEYS.map(t => TYPE_COLORS[t]),
-        borderWidth: 0,
-        hoverOffset: 8
-      }]
-    },
+    data: { labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 0, hoverOffset: 8 }] },
     options: {
       responsive: true, maintainAspectRatio: false, cutout: '62%',
       plugins: {
         legend: { position: 'bottom', labels: { boxWidth: 12, padding: 16 } },
-        datalabels: {
-          color: '#fff', font: { weight: 600, size: 11 },
-          formatter: v => v > 0 ? fmtShort(v) : ''
-        }
+        datalabels: { color: '#fff', font: { weight: 600, size: 11 }, formatter: v => v > 0 ? fmtShort(v) : '' }
       }
     },
     plugins: [ChartDataLabels]
-  };
-  renderChart('chartType', cfg);
+  });
 }
 
-// ── Chart: Website Bar ──
-function updateChartSite(data) {
-  const sites = [...new Set(data.map(r => r.website).filter(Boolean))].sort();
-  const vals = sites.map(s => data.filter(r => r.website === s).reduce((a, r) => a + (Number(r.total) || 0), 0));
-  const cfg = {
+// ── Chart: Remittance Timeline ──
+function updateChartDailyFlow() {
+  const daily = (fundFlowData.daily || []).filter(d => d.in > 0);
+  const labels = daily.map(d => { const p = d.date.split('-'); return (p[1] || '') + '/' + (p[2] || ''); });
+  renderChart('chartDailyFlow', {
     type: 'bar',
     data: {
-      labels: sites,
-      datasets: [{
-        label: 'Total',
-        data: vals,
-        backgroundColor: 'rgba(124,77,255,0.6)',
-        borderColor: '#7c4dff',
-        borderWidth: 1,
-        borderRadius: 6,
-        barPercentage: 0.65
-      }]
+      labels,
+      datasets: [
+        { label: 'Remittance', data: daily.map(d => d.in), backgroundColor: 'rgba(76,175,80,0.6)', borderColor: '#4CAF50', borderWidth: 1, borderRadius: 6, barPercentage: 0.65 },
+      ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        datalabels: {
-          anchor: 'end', align: 'top', color: '#fff', font: { size: 10, weight: 600 },
-          formatter: v => v > 0 ? fmtShort(v) : ''
-        }
-      },
-      scales: {
-        y: pesoAxis(),
-        x: { grid: { display: false } }
-      }
+      plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'top', color: '#fff', font: { size: 10, weight: 600 }, formatter: v => v > 0 ? fmtShort(v) : '' } },
+      scales: { y: pesoAxis(), x: { grid: { display: false }, ticks: { maxRotation: 45, font: { size: 10 } } } }
     },
     plugins: [ChartDataLabels]
-  };
-  renderChart('chartSite', cfg);
-}
-
-// ── Chart: Daily Trend (Line + Area) ──
-function updateChartTrend(data) {
-  const byDate = {};
-  data.forEach(r => {
-    if (!r.date) return;
-    byDate[r.date] = (byDate[r.date] || 0) + (Number(r.total) || 0);
   });
-  const dates = Object.keys(byDate).sort();
-  const vals = dates.map(d => byDate[d]);
-  const cfg = {
-    type: 'line',
-    data: {
-      labels: dates.map(d => { const p = d.split('-'); return (p[1] || '') + '/' + (p[2] || ''); }),
-      datasets: [{
-        label: 'Daily Spend',
-        data: vals,
-        borderColor: '#b388ff',
-        backgroundColor: 'rgba(179,136,255,0.12)',
-        fill: true,
-        tension: 0.35,
-        pointRadius: 3,
-        pointBackgroundColor: '#b388ff',
-        pointBorderWidth: 0,
-        borderWidth: 2
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        datalabels: { display: false }
-      },
-      scales: {
-        y: pesoAxis(),
-        x: { grid: { display: false }, ticks: { maxRotation: 45, font: { size: 10 } } }
-      }
-    },
-    plugins: [ChartDataLabels]
-  };
-  renderChart('chartTrend', cfg);
 }
 
-function renderChart(id, cfg) {
-  if (charts[id]) { charts[id].destroy(); }
-  const ctx = document.getElementById(id).getContext('2d');
-  charts[id] = new Chart(ctx, cfg);
-}
-
-// ── Cross-tab ──
-function updateCrosstab(data) {
-  const depts = [...new Set(data.map(r => r.department).filter(Boolean))].sort();
-  const sites = [...new Set(data.map(r => r.website).filter(Boolean))].sort();
-  if (!depts.length || !sites.length) {
-    document.getElementById('crosstab').innerHTML = '<tr><td style="padding:20px;color:rgba(255,255,255,0.4)">No data</td></tr>';
-    return;
-  }
-  const lookup = {};
-  data.forEach(r => {
-    const k = (r.department || '') + '|||' + (r.website || '');
-    lookup[k] = (lookup[k] || 0) + (Number(r.total) || 0);
-  });
-  let html = '<thead><tr><th>Department</th>';
-  sites.forEach(s => html += `<th style="text-align:right">${s}</th>`);
-  html += '<th style="text-align:right">Total</th></tr></thead><tbody>';
-  const colTotals = sites.map(() => 0);
-  let grandTotal = 0;
-  depts.forEach(d => {
-    html += `<tr><td>${d}</td>`;
-    let rowSum = 0;
-    sites.forEach((s, i) => {
-      const v = lookup[d + '|||' + s] || 0;
-      colTotals[i] += v;
-      rowSum += v;
-      html += `<td>${v ? fmt(v) : '-'}</td>`;
-    });
-    grandTotal += rowSum;
-    html += `<td class="row-total">${fmt(rowSum)}</td></tr>`;
-  });
-  html += '<tr class="col-total"><td style="font-weight:700">Total</td>';
-  colTotals.forEach(v => html += `<td class="col-total">${fmt(v)}</td>`);
-  html += `<td class="row-total col-total">${fmt(grandTotal)}</td></tr>`;
-  html += '</tbody>';
-  document.getElementById('crosstab').innerHTML = html;
-}
-
-// ── Detail Table ──
-function updateDetailTable(data) {
-  const sorted = [...data].sort((a, b) => {
+// ── Ledger Table (CREDIT only) ──
+function updateLedgerTable() {
+  const creditOnly = ledgerData.filter(r => r.type === 'CREDIT');
+  const sorted = [...creditOnly].sort((a, b) => {
     let va = a[sortState.key], vb = b[sortState.key];
-    if (sortState.key === 'amount' || sortState.key === 'total') {
+    if (['no', 'amount', 'balance', 'debit', 'credit'].includes(sortState.key)) {
       va = Number(va) || 0; vb = Number(vb) || 0;
     } else {
       va = (va || '').toString().toLowerCase();
@@ -665,58 +505,364 @@ function updateDetailTable(data) {
     return 0;
   });
 
-  const typeBadge = (t) => {
-    if (t === 'OPEX') return '<span class="badge badge-opex">OPEX</span>';
-    if (t === 'Pre-Operation') return '<span class="badge badge-preop">Pre-Op</span>';
-    if (t === 'Hard Assets') return '<span class="badge badge-hard">Hard Assets</span>';
-    return t || '';
-  };
-  const statusBadge = (s) => {
-    const sl = (s || '').toLowerCase();
-    if (sl === 'approved') return '<span class="badge badge-approved">Approved</span>';
-    if (sl === 'pending') return '<span class="badge badge-pending">Pending</span>';
-    return s || '';
-  };
+  document.getElementById('ledgerBody').innerHTML = sorted.map(r => {
+    const isCredit = r.type === 'CREDIT';
+    const amount = isCredit ? r.credit : r.debit;
+    const rowBg = isCredit ? 'rgba(76,175,80,0.05)' : 'rgba(244,67,54,0.03)';
+    const badge = isCredit ? '<span class="badge badge-credit">CREDIT</span>' : '<span class="badge badge-debit">DEBIT</span>';
+    return `<tr style="background:${rowBg}">
+      <td>${r.no}</td>
+      <td>${r.date}</td>
+      <td>${badge}</td>
+      <td>${r.source}</td>
+      <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis">${r.description}</td>
+      <td>${r.person}</td>
+      <td style="text-align:right;font-weight:600;color:${isCredit ? '#81c784' : '#ef9a9a'}">${isCredit ? '+' : '-'}${fmt(amount)}</td>
+      <td style="text-align:right">${fmt(r.balance)}</td>
+    </tr>`;
+  }).join('');
 
-  document.getElementById('detailBody').innerHTML = sorted.map(r => `<tr>
-    <td>${r.date || ''}</td>
-    <td>${r.person || ''}</td>
-    <td>${r.department || ''}</td>
-    <td>${r.website || ''}</td>
-    <td>${r.category || ''}</td>
-    <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis">${r.description || ''}</td>
-    <td style="text-align:right">${fmt(r.amount)}</td>
-    <td style="text-align:right;font-weight:600">${fmt(r.total)}</td>
-    <td>${typeBadge(r.type)}</td>
-    <td>${statusBadge(r.status)}</td>
-  </tr>`).join('');
-
-  // Update header sort indicators
-  document.querySelectorAll('#detailTable th').forEach(th => {
+  document.querySelectorAll('#ledgerTable th').forEach(th => {
     th.classList.toggle('sorted', th.dataset.key === sortState.key);
     const arrow = th.querySelector('.sort-arrow');
-    if (arrow && th.dataset.key === sortState.key) {
-      arrow.innerHTML = sortState.asc ? '&#9650;' : '&#9660;';
-    }
+    if (arrow && th.dataset.key === sortState.key) arrow.innerHTML = sortState.asc ? '&#9650;' : '&#9660;';
   });
 }
 
+// ── Pre-Op Section ──
+function updatePreop() {
+  const total = preopData.reduce((s, r) => s + (r.total || 0), 0);
+  document.getElementById('preopTotal').textContent = fmt(total);
+  document.getElementById('preopCount').textContent = fmtCount(preopData.length) + ' items';
+
+  // Chart by dept
+  const depts = {};
+  preopData.forEach(r => { if (r.department) depts[r.department] = (depts[r.department] || 0) + (r.total || 0); });
+  const labels = Object.keys(depts).sort((a, b) => depts[b] - depts[a]);
+  const values = labels.map(l => depts[l]);
+  renderChart('chartPreopDept', {
+    type: 'bar',
+    data: { labels, datasets: [{ data: values, backgroundColor: 'rgba(33,150,243,0.6)', borderColor: '#2196F3', borderWidth: 1, borderRadius: 6, barPercentage: 0.65 }] },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'right', color: '#fff', font: { size: 10, weight: 600 }, formatter: v => v > 0 ? fmtShort(v) : '' } },
+      scales: { x: pesoAxis(), y: { grid: { display: false } } }
+    },
+    plugins: [ChartDataLabels]
+  });
+
+  // Table
+  document.getElementById('preopBody').innerHTML = preopData.map(r => `<tr>
+    <td>${r.date}</td><td>${r.person}</td><td>${r.department}</td><td>${r.category}</td>
+    <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${r.description}</td>
+    <td>${r.txnNo}</td><td style="text-align:center">${r.quantity}</td>
+    <td style="text-align:right">${fmt(r.amount)}</td><td style="text-align:right;font-weight:600">${fmt(r.total)}</td>
+    <td>${r.payment}</td><td>${r.status || ''}</td>
+  </tr>`).join('');
+}
+
+// ── Hard Assets Section ──
+function updateHard() {
+  const valid = hardData.filter(r => r.total > 0);
+  const total = valid.reduce((s, r) => s + (r.total || 0), 0);
+  document.getElementById('hardTotal').textContent = fmt(total);
+  document.getElementById('hardCount').textContent = fmtCount(valid.length) + ' items';
+
+  // Chart by dept
+  const depts = {};
+  valid.forEach(r => { if (r.department) depts[r.department] = (depts[r.department] || 0) + (r.total || 0); });
+  const labels = Object.keys(depts).sort((a, b) => depts[b] - depts[a]);
+  const values = labels.map(l => depts[l]);
+  renderChart('chartHardDept', {
+    type: 'bar',
+    data: { labels, datasets: [{ data: values, backgroundColor: 'rgba(255,152,0,0.6)', borderColor: '#FF9800', borderWidth: 1, borderRadius: 6, barPercentage: 0.65 }] },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'right', color: '#fff', font: { size: 10, weight: 600 }, formatter: v => v > 0 ? fmtShort(v) : '' } },
+      scales: { x: pesoAxis(), y: { grid: { display: false } } }
+    },
+    plugins: [ChartDataLabels]
+  });
+
+  // Table (filter out ₱0 rows)
+  document.getElementById('hardBody').innerHTML = valid.map(r => `<tr>
+    <td>${r.date}</td><td>${r.person}</td><td>${r.department}</td><td>${r.category}</td>
+    <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${r.description}</td>
+    <td>${r.txnNo}</td><td style="text-align:center">${r.quantity}</td>
+    <td style="text-align:right">${fmt(r.amount)}</td><td style="text-align:right;font-weight:600">${fmt(r.total)}</td>
+    <td>${r.payment}</td><td>${r.status || ''}</td>
+  </tr>`).join('');
+}
+
+// ── Date Helper ──
+function normalizeDate(d) {
+  if (!d) return null;
+  const s = String(d).trim();
+  // Try ISO: 2026-04-01
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  // Try M/D/YYYY or MM/DD/YYYY
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return m[3] + '-' + m[1].padStart(2, '0') + '-' + m[2].padStart(2, '0');
+  // Fallback
+  const dt = new Date(s);
+  if (!isNaN(dt.getTime())) return dt.toISOString().slice(0, 10);
+  return null;
+}
+function formatDateDisplay(d) {
+  if (!d) return '';
+  const p = d.split('-');
+  return (p[1] || '') + '/' + (p[2] || '') + '/' + (p[0] || '');
+}
+
+// ── Ads Fund Section ──
+function updateAdsFund() {
+  const d = adsFundData;
+  document.getElementById('adsUsdt').textContent = (d.totalUsdt || 0).toLocaleString('en-US', {minimumFractionDigits: 2}) + ' USDT';
+  document.getElementById('adsPhp').textContent = fmt(d.totalPhp || 0);
+  document.getElementById('adsCount').textContent = fmtCount(d.count || 0) + ' transfers';
+  document.getElementById('adsRate').textContent = 'Avg rate: ' + (d.avgRate || 0).toFixed(4);
+
+  // Chart by recipient
+  const byR = d.byRecipient || {};
+  const labels = Object.keys(byR).sort((a, b) => byR[b].php - byR[a].php);
+  const values = labels.map(l => byR[l].php);
+  const colors = ['#9C27B0', '#2196F3', '#FF6B35', '#4CAF50', '#f44336', '#FF9800'];
+  renderChart('chartAdsRecipient', {
+    type: 'bar',
+    data: { labels, datasets: [{ data: values, backgroundColor: labels.map((_, i) => colors[i % colors.length]), borderRadius: 6, barPercentage: 0.65 }] },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'right', color: '#fff', font: { size: 10, weight: 600 }, formatter: v => v > 0 ? fmtShort(v) : '' } },
+      scales: { x: pesoAxis(), y: { grid: { display: false } } }
+    },
+    plugins: [ChartDataLabels]
+  });
+
+  // Table
+  const transfers = d.transfers || [];
+  document.getElementById('adsBody').innerHTML = transfers.map(r => {
+    const walletShort = r.wallet ? r.wallet.substring(0, 12) + '...' : '';
+    return `<tr>
+      <td>${r.no}</td>
+      <td>${r.date}</td>
+      <td>${r.time}</td>
+      <td style="font-weight:600">${r.recipient}</td>
+      <td style="text-align:right">${r.usdt > 0 ? r.usdt.toLocaleString('en-US', {minimumFractionDigits: 2}) : '-'}</td>
+      <td style="text-align:right">${r.rate > 0 ? r.rate.toFixed(4) : '-'}</td>
+      <td style="text-align:right;font-weight:600">${fmt(r.php)}</td>
+      <td>${r.payment}</td>
+      <td style="font-size:.7rem;color:var(--text-dim)">${walletShort}</td>
+      <td>${r.network}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Overall Daily Spend ──
+function updateDailySpend() {
+  const dailyMap = {};
+  const addDay = (date, key, amount) => {
+    const d = normalizeDate(date);
+    if (!d || !amount) return;
+    if (!dailyMap[d]) dailyMap[d] = { preop: 0, hard: 0, ads: 0 };
+    dailyMap[d][key] += amount;
+  };
+
+  preopData.forEach(r => addDay(r.date, 'preop', r.total));
+  hardData.filter(r => r.total > 0).forEach(r => addDay(r.date, 'hard', r.total));
+  (adsFundData.transfers || []).forEach(r => addDay(r.date, 'ads', r.php));
+
+  const days = Object.keys(dailyMap).sort();
+  if (!days.length) return;
+
+  // Totals
+  let totalPreop = 0, totalHard = 0, totalAds = 0;
+  let peakDay = '', peakAmt = 0;
+  days.forEach(d => {
+    const v = dailyMap[d];
+    totalPreop += v.preop;
+    totalHard += v.hard;
+    totalAds += v.ads;
+    const dayTotal = v.preop + v.hard + v.ads;
+    if (dayTotal > peakAmt) { peakAmt = dayTotal; peakDay = d; }
+  });
+  const grandTotal = totalPreop + totalHard + totalAds;
+  const avgDaily = grandTotal / days.length;
+  const calendarDays = Math.max(1, (new Date(days[days.length - 1]) - new Date(days[0])) / 86400000 + 1);
+  const burnRate = grandTotal / calendarDays;
+
+  // KPIs computed but no dedicated elements needed (values shown in top row)
+
+  // Chart: Spend by Category (Doughnut)
+  renderChart('chartDsCategory', {
+    type: 'doughnut',
+    data: {
+      labels: ['Pre-Operation', 'Hard Assets', 'Ads Fund'],
+      datasets: [{ data: [totalPreop, totalHard, totalAds], backgroundColor: ['#2196F3', '#FF9800', '#9C27B0'], borderWidth: 0, hoverOffset: 8 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '62%',
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12, padding: 16 } },
+        datalabels: { color: '#fff', font: { weight: 600, size: 11 }, formatter: v => v > 0 ? fmtShort(v) : '' }
+      }
+    },
+    plugins: [ChartDataLabels]
+  });
+
+  // Chart: Daily Fund In vs Cost
+  // Merge fund flow daily data with cost daily data
+  const allDates = new Set([...days]);
+  const fundDaily = fundFlowData.daily || [];
+  fundDaily.forEach(d => { if (d.in > 0) allDates.add(d.date); });
+  const allDatesSorted = [...allDates].sort();
+
+  const fundInByDate = {};
+  fundDaily.forEach(d => { fundInByDate[d.date] = d.in; });
+
+  const dateLabels = allDatesSorted.map(d => { const p = d.split('-'); return p[1] + '/' + p[2]; });
+  const fundInArr = allDatesSorted.map(d => fundInByDate[d] || 0);
+  const costArr = allDatesSorted.map(d => {
+    const v = dailyMap[d];
+    return v ? v.preop + v.hard + v.ads : 0;
+  });
+  let balanceArr = [], bal = 0;
+  allDatesSorted.forEach((d, i) => {
+    bal += (fundInArr[i] || 0) - (costArr[i] || 0);
+    balanceArr.push(bal);
+  });
+
+  renderChart('chartDsTrend', {
+    type: 'bar',
+    data: {
+      labels: dateLabels,
+      datasets: [
+        { label: 'Fund In', data: fundInArr, backgroundColor: 'rgba(76,175,80,0.7)', borderRadius: 4, order: 2 },
+        { label: 'Cost', data: costArr, backgroundColor: 'rgba(244,67,54,0.7)', borderRadius: 4, order: 2 },
+        { label: 'Balance', data: balanceArr, type: 'line', borderColor: '#7c4dff', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#7c4dff', tension: 0.3, yAxisID: 'y1', order: 1 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top', labels: { boxWidth: 12, padding: 12 } }, datalabels: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { maxRotation: 45, font: { size: 10 } } },
+        y: pesoAxis(),
+        y1: { position: 'right', ...pesoAxis(), grid: { display: false } }
+      }
+    },
+    plugins: [ChartDataLabels]
+  });
+
+  // Chart: Waterfall (Funds In → Spent → Remaining)
+  const fundsIn = fundFlowData.totalRemittance || 0;
+  const cashBal = fundsIn - grandTotal;
+  renderChart('chartDsWaterfall', {
+    type: 'bar',
+    data: {
+      labels: ['Funds In', 'Pre-Op', 'Hard Assets', 'Ads Fund', 'Cash Balance'],
+      datasets: [{
+        data: [
+          [0, fundsIn],
+          [fundsIn, fundsIn - totalPreop],
+          [fundsIn - totalPreop, fundsIn - totalPreop - totalHard],
+          [fundsIn - totalPreop - totalHard, cashBal],
+          [0, cashBal]
+        ],
+        backgroundColor: ['rgba(76,175,80,0.7)', 'rgba(33,150,243,0.7)', 'rgba(255,152,0,0.7)', 'rgba(156,39,176,0.7)', 'rgba(33,150,243,0.4)'],
+        borderColor: ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#2196F3'],
+        borderWidth: 1, borderRadius: 4, barPercentage: 0.6
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        datalabels: {
+          color: '#fff', font: { weight: 600, size: 10 },
+          formatter: (v) => { const amt = Array.isArray(v) ? Math.abs(v[1] - v[0]) : v; return amt > 0 ? fmtShort(amt) : ''; },
+          anchor: 'center'
+        }
+      },
+      scales: { y: pesoAxis(), x: { grid: { display: false } } }
+    },
+    plugins: [ChartDataLabels]
+  });
+
+  // Chart: Monthly Summary
+  const months = {};
+  days.forEach(d => {
+    const m = d.slice(0, 7); // YYYY-MM
+    if (!months[m]) months[m] = { preop: 0, hard: 0, ads: 0 };
+    months[m].preop += dailyMap[d].preop;
+    months[m].hard += dailyMap[d].hard;
+    months[m].ads += dailyMap[d].ads;
+  });
+  const monthKeys = Object.keys(months).sort();
+  const container = document.getElementById('monthlyContainer');
+  if (monthKeys.length <= 1) {
+    container.style.display = 'none';
+  } else {
+    container.style.display = '';
+    renderChart('chartDsMonthly', {
+      type: 'bar',
+      data: {
+        labels: monthKeys,
+        datasets: [
+          { label: 'Pre-Op', data: monthKeys.map(m => months[m].preop), backgroundColor: '#2196F3', borderRadius: 4 },
+          { label: 'Hard Assets', data: monthKeys.map(m => months[m].hard), backgroundColor: '#FF9800', borderRadius: 4 },
+          { label: 'Ads Fund', data: monthKeys.map(m => months[m].ads), backgroundColor: '#9C27B0', borderRadius: 4 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'top', labels: { boxWidth: 12 } }, datalabels: { display: false } },
+        scales: { y: pesoAxis(), x: { grid: { display: false } } }
+      },
+      plugins: [ChartDataLabels]
+    });
+  }
+
+  // Table: Fund In vs Cost daily
+  let tableBal = 0;
+  let totalFundInTable = 0;
+  let html = allDatesSorted.map((d, i) => {
+    const v = dailyMap[d] || { preop: 0, hard: 0, ads: 0 };
+    const fundIn = fundInByDate[d] || 0;
+    const dayCost = v.preop + v.hard + v.ads;
+    tableBal += fundIn - dayCost;
+    totalFundInTable += fundIn;
+    const hasActivity = fundIn > 0 || dayCost > 0;
+    if (!hasActivity) return '';
+    return `<tr>
+      <td>${formatDateDisplay(d)}</td>
+      <td style="text-align:right;color:#4CAF50;font-weight:${fundIn > 0 ? '600' : '400'}">${fundIn > 0 ? fmt(fundIn) : '-'}</td>
+      <td style="text-align:right">${v.preop > 0 ? fmt(v.preop) : '-'}</td>
+      <td style="text-align:right">${v.hard > 0 ? fmt(v.hard) : '-'}</td>
+      <td style="text-align:right">${v.ads > 0 ? fmt(v.ads) : '-'}</td>
+      <td style="text-align:right;color:#f44336;font-weight:600">${dayCost > 0 ? fmt(dayCost) : '-'}</td>
+      <td style="text-align:right;color:${tableBal >= 0 ? '#4CAF50' : '#f44336'};font-weight:600">${fmt(tableBal)}</td>
+    </tr>`;
+  }).filter(r => r).join('');
+  html += `<tr class="daily-total-row">
+    <td style="font-weight:700">TOTAL</td>
+    <td style="text-align:right;color:#4CAF50">${fmt(totalFundInTable)}</td>
+    <td style="text-align:right">${fmt(totalPreop)}</td>
+    <td style="text-align:right">${fmt(totalHard)}</td>
+    <td style="text-align:right">${fmt(totalAds)}</td>
+    <td style="text-align:right;color:#f44336">${fmt(grandTotal)}</td>
+    <td style="text-align:right;color:${tableBal >= 0 ? '#4CAF50' : '#f44336'}">${fmt(tableBal)}</td>
+  </tr>`;
+  document.getElementById('dsBody').innerHTML = html;
+}
+
 // ── Event Listeners ──
-document.querySelectorAll('#filterBar select, #filterBar input').forEach(el => {
-  el.addEventListener('change', update);
-});
-document.getElementById('btnReset').addEventListener('click', () => {
-  document.querySelectorAll('#filterBar select').forEach(s => s.value = '');
-  document.querySelectorAll('#filterBar input').forEach(i => i.value = '');
-  update();
-});
-document.querySelectorAll('#detailTable th').forEach(th => {
+document.querySelectorAll('#ledgerTable th').forEach(th => {
   th.addEventListener('click', () => {
     const key = th.dataset.key;
     if (!key) return;
-    if (sortState.key === key) { sortState.asc = !sortState.asc; }
+    if (sortState.key === key) sortState.asc = !sortState.asc;
     else { sortState.key = key; sortState.asc = true; }
-    update();
+    updateLedgerTable();
   });
 });
 
