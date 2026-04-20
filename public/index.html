@@ -81,12 +81,50 @@ tr:hover td{background:rgba(255,255,255,0.04)}
 .loading-text{margin-top:16px;color:var(--text-dim);font-size:.9rem}
 .error-banner{background:rgba(244,67,54,0.15);border:1px solid rgba(244,67,54,0.3);border-radius:12px;padding:16px 20px;margin-bottom:20px;display:none;font-size:.85rem;color:#ef9a9a}
 
-@media(max-width:1200px){.grid-4{grid-template-columns:repeat(2,1fr)}.grid-3{grid-template-columns:repeat(2,1fr)}}
+/* Tablet */
+@media(max-width:1200px){
+  .grid-4{grid-template-columns:repeat(2,1fr)}
+  .grid-3{grid-template-columns:repeat(2,1fr)}
+}
+
+/* Mobile */
 @media(max-width:768px){
-  .grid-4,.grid-3,.grid-2{grid-template-columns:1fr}
-  .header{flex-direction:column;align-items:flex-start}
-  body{padding:12px}
-  .kpi .kpi-value{font-size:1.3rem}
+  .grid-4,.grid-3,.grid-2,.grid-2x2{grid-template-columns:1fr}
+  .header{flex-direction:column;align-items:flex-start;gap:8px}
+  .header h1{font-size:1.3rem}
+  .header-meta{flex-wrap:wrap;font-size:.72rem;gap:8px}
+  body{padding:10px}
+  .container{max-width:100%}
+  .glass{padding:14px;border-radius:12px}
+  .kpi{padding:16px 12px}
+  .kpi .kpi-value{font-size:1.25rem}
+  .kpi .kpi-label{font-size:.68rem;letter-spacing:1px}
+  .kpi .kpi-sub{font-size:.7rem}
+  .kpi .kpi-icon{width:36px;height:36px;font-size:1.1rem;margin-bottom:8px}
+  .chart-card{padding:14px}
+  .chart-card h3{font-size:.78rem;margin-bottom:10px}
+  .chart-wrap{min-height:220px!important}
+  .section-title{font-size:.9rem;margin:20px 0 12px}
+  .section-title-exec{font-size:1rem;margin:28px 0 14px}
+  table{font-size:.68rem}
+  th{font-size:.62rem;padding:7px 6px}
+  td{padding:7px 6px;white-space:normal;word-break:break-word}
+  .badge{font-size:.6rem;padding:2px 7px}
+  .table-wrap{margin-bottom:14px;-webkit-overflow-scrolling:touch}
+  .daily-total-row td{font-size:.7rem}
+}
+
+/* Small mobile */
+@media(max-width:480px){
+  body{padding:6px}
+  .header h1{font-size:1.1rem}
+  .kpi .kpi-value{font-size:1.1rem}
+  .kpi .kpi-label{font-size:.6rem}
+  .glass{padding:10px;border-radius:10px}
+  .chart-wrap{min-height:180px!important}
+  table{font-size:.62rem}
+  th{padding:5px 4px}
+  td{padding:5px 4px}
 }
 
 /* Executive section */
