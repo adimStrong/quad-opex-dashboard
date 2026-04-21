@@ -336,6 +336,20 @@ tr:hover td { background: rgba(102, 126, 234, 0.04); }
 .util-yellow { background: rgba(255, 152, 0, 0.15); color: #e65100; padding: 3px 10px; border-radius: 20px; font-weight: 700; font-size: 0.8rem; }
 .util-red { background: rgba(233, 69, 96, 0.15); color: #c62828; padding: 3px 10px; border-radius: 20px; font-weight: 700; font-size: 0.8rem; }
 
+/* ─── Advertiser Summary ─── */
+.advertiser-card { cursor: pointer; transition: all 0.2s ease; }
+.advertiser-card:hover { transform: translateY(-2px) !important; box-shadow: 0 8px 20px rgba(0,0,0,0.1) !important; }
+.merchant-tab {
+  background: transparent; border: 1.5px solid rgba(102,126,234,0.3); color: #667eea;
+  padding: 6px 14px; border-radius: 18px; font-size: 0.85rem; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+}
+.merchant-tab.active { background: #667eea; color: #fff; border-color: #667eea; }
+.merchant-tab:hover { border-color: #667eea; }
+@media (max-width: 768px) {
+  .advertiser-cards-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important; }
+}
+
 /* ─── Filters row ─── */
 .filter-row {
   display: grid;
@@ -510,6 +524,61 @@ tr:hover td { background: rgba(102, 126, 234, 0.04); }
   <!-- ═══ Main content wrapper ═══ -->
   <div id="mainContent" style="display:none;">
 
+    <!-- ═══ Ads Spend by Advertiser (hero summary) ═══ -->
+    <div class="card advertiser-summary" style="border: 2px solid rgba(102,126,234,0.25);">
+      <h2 class="card-title">💼 Ads Spend by Advertiser</h2>
+      <p style="color:#666;font-size:0.9rem;margin:0 0 18px 0;">
+        Who's spending what on Facebook ads. Click any advertiser to filter the chart and merchant view below.
+      </p>
+
+      <!-- 5 per-advertiser KPI cards in a grid -->
+      <div class="advertiser-cards-grid" id="advertiserCards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:24px;"></div>
+
+      <!-- Multi-line daily spend chart -->
+      <div class="chart-wrap" style="height:320px;position:relative;margin-bottom:20px;">
+        <canvas id="chartDailyByPerson"></canvas>
+      </div>
+
+      <!-- Top Merchants section -->
+      <h3 style="color:#667eea;margin:20px 0 12px 0;font-size:1.05rem;">Top Merchants</h3>
+      <div class="merchant-tabs" id="merchantTabs" style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;"></div>
+      <div class="table-wrap" style="overflow-x:auto;">
+        <table class="table" style="min-width:600px;">
+          <thead>
+            <tr>
+              <th>Merchant</th>
+              <th>Advertiser</th>
+              <th class="num">Txns</th>
+              <th class="num">USD</th>
+              <th class="num">PHP</th>
+            </tr>
+          </thead>
+          <tbody id="tblTopMerchants"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══ Plan vs Actual ═══ -->
+    <div class="card">
+      <h2 class="card-title">Plan vs Actual</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Person</th>
+              <th class="num">Planned (USDT)</th>
+              <th class="num">Rate</th>
+              <th class="num">Planned PHP</th>
+              <th class="num">Actual PHP</th>
+              <th class="num">Variance</th>
+              <th>Utilization</th>
+            </tr>
+          </thead>
+          <tbody id="tblPlan"></tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- ═══ KPI Cards ═══ -->
     <div class="kpi-grid">
       <div class="kpi-card">
@@ -569,27 +638,6 @@ tr:hover td { background: rgba(102, 126, 234, 0.04); }
             </tr>
           </thead>
           <tbody id="tblPerson"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ═══ Plan vs Actual ═══ -->
-    <div class="card">
-      <h2 class="card-title">Plan vs Actual</h2>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Person</th>
-              <th class="num">Planned (USDT)</th>
-              <th class="num">Rate</th>
-              <th class="num">Planned PHP</th>
-              <th class="num">Actual PHP</th>
-              <th class="num">Variance</th>
-              <th>Utilization</th>
-            </tr>
-          </thead>
-          <tbody id="tblPlan"></tbody>
         </table>
       </div>
     </div>
@@ -825,6 +873,9 @@ const API = {
   // Card ledger endpoints
   cardsList:     '/api/cards',
   cardLedger:    '/api/card-ledger/',
+  // Advertiser summary endpoints
+  dailyByPerson: '/api/ads/daily-by-person',
+  topMerchants:  '/api/ads/top-merchants',
 };
 
 const PAGE_SIZE = 100;
@@ -1104,7 +1155,7 @@ async function fetchJson(url) {
 async function refreshAll() {
   showLoader('Refreshing data...');
   try {
-    const [summary, daily, hourly, byCard, failedPat, reversal, fxRate, plan] = await Promise.all([
+    const [summary, daily, hourly, byCard, failedPat, reversal, fxRate, plan, dailyByPerson, topMerchants] = await Promise.all([
       fetchJson(API.summary).catch(e => { console.warn(e); return null; }),
       fetchJson(API.daily).catch(e => { console.warn(e); return []; }),
       fetchJson(API.hourly).catch(e => { console.warn(e); return []; }),
@@ -1113,6 +1164,8 @@ async function refreshAll() {
       fetchJson(API.reversal).catch(e => { console.warn(e); return []; }),
       fetchJson(API.fxRate).catch(e => { console.warn(e); return []; }),
       fetchJson(API.plan).catch(e => { console.warn(e); return []; }),
+      fetchJson(API.dailyByPerson).catch(e => { console.warn(e); return []; }),
+      fetchJson(API.topMerchants + '?limit=15').catch(e => { console.warn(e); return []; }),
     ]);
 
     const hasCardData = summary && (Number(summary.totalTxns) > 0 || Number(summary.totalPhp) > 0);
@@ -1121,6 +1174,9 @@ async function refreshAll() {
     document.getElementById('mainContent').style.display = anyData ? 'block' : 'none';
 
     if (hasCardData) {
+      // Cache daily-by-person for later re-renders triggered by advertiser filter
+      state.lastDailyByPerson = dailyByPerson || [];
+
       renderKpis(summary);
       renderPerson(summary);
       renderPlan(plan);
@@ -1130,6 +1186,13 @@ async function refreshAll() {
       renderFailed(failedPat);
       renderReversal(reversal);
       renderFx(fxRate);
+
+      // New advertiser summary renderers
+      renderAdvertiserCards(summary?.byPerson || [], dailyByPerson || []);
+      renderMultiLineDaily(dailyByPerson || []);
+      renderMerchantTabs(summary?.byPerson || []);
+      renderTopMerchants(topMerchants || []);
+
       await loadTransactions();
     }
 
@@ -1913,6 +1976,165 @@ function renderChart(id, cfg) {
   const canvas = document.getElementById(id);
   if (!canvas) return;
   state.charts[id] = new Chart(canvas.getContext('2d'), cfg);
+}
+
+// ══════════════════════════════════════════════════════════
+// Ads Spend by Advertiser (hero summary)
+// ══════════════════════════════════════════════════════════
+// Store current filter state
+window.currentAdvertiser = null;
+
+function renderAdvertiserCards(byPerson, dailyByPerson) {
+  const container = document.getElementById('advertiserCards');
+  if (!container) return;
+  if (!byPerson.length) { container.innerHTML = '<div style="color:#999;padding:20px;text-align:center;">No advertiser data yet.</div>'; return; }
+  // Sort by USD desc
+  const sorted = [...byPerson].sort((a, b) => (Number(b.totalUsd) || 0) - (Number(a.totalUsd) || 0));
+  // Build per-person sparkline series
+  const byPerSparkline = {};
+  dailyByPerson.forEach(r => {
+    byPerSparkline[r.person] = byPerSparkline[r.person] || [];
+    byPerSparkline[r.person].push(Number(r.usd) || 0);
+  });
+  container.innerHTML = sorted.map(p => {
+    const color = (typeof PERSON_COLORS !== 'undefined' && PERSON_COLORS[p.person]) || '#667eea';
+    const failed = Number(p.failed) || 0;
+    const sparkId = 'spark-' + p.person.replace(/[^a-z0-9]/gi, '');
+    const active = window.currentAdvertiser === p.person;
+    return `<div class="advertiser-card" data-person="${p.person}" style="background:#fff;border-top:4px solid ${color};border-radius:12px;padding:14px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,${active ? '0.15' : '0.06'});transform:scale(${active ? '1.02' : '1'});transition:all 0.2s;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${color};"></span>
+        <strong style="color:#333;font-size:0.95rem;">${p.person}</strong>
+      </div>
+      <div style="font-size:1.7rem;font-weight:700;color:${color};line-height:1.1;">${fmtUsdShort(Number(p.totalUsd) || 0)}</div>
+      <div style="color:#666;font-size:0.85rem;margin-top:2px;">${fmtPhp(Number(p.totalPhp) || 0)}</div>
+      <div style="display:flex;gap:10px;margin-top:6px;font-size:0.8rem;color:#888;">
+        <span>${fmtCount(p.txns || 0)} txns</span>
+        ${failed > 0 ? `<span style="color:#e94560;font-weight:600;">${failed} failed</span>` : ''}
+      </div>
+      <canvas id="${sparkId}" style="width:100%;height:32px;margin-top:8px;"></canvas>
+    </div>`;
+  }).join('');
+  // Render sparklines
+  sorted.forEach(p => {
+    const sparkId = 'spark-' + p.person.replace(/[^a-z0-9]/gi, '');
+    const color = (typeof PERSON_COLORS !== 'undefined' && PERSON_COLORS[p.person]) || '#667eea';
+    renderSparkline(sparkId, byPerSparkline[p.person] || [], color);
+  });
+  // Wire up clicks
+  container.querySelectorAll('.advertiser-card').forEach(el => {
+    el.addEventListener('click', () => {
+      const person = el.dataset.person;
+      window.currentAdvertiser = window.currentAdvertiser === person ? null : person;
+      renderAdvertiserCards(byPerson, dailyByPerson);
+      renderMultiLineDaily(dailyByPerson);
+      renderMerchantTabs(byPerson);
+      loadMerchantsForPerson(window.currentAdvertiser);
+    });
+  });
+}
+
+function renderSparkline(canvasId, values, color) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  if (state.charts[canvasId]) state.charts[canvasId].destroy();
+  state.charts[canvasId] = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: { labels: values.map((_, i) => i), datasets: [{ data: values, borderColor: color, backgroundColor: color + '20', borderWidth: 1.5, pointRadius: 0, fill: true, tension: 0.4 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } }, scales: { x: { display: false }, y: { display: false } }, animation: false },
+  });
+}
+
+function renderMultiLineDaily(rows) {
+  if (!Array.isArray(rows) || !rows.length) return;
+  const byPerson = {};
+  const dateSet = new Set();
+  rows.forEach(r => {
+    byPerson[r.person] = byPerson[r.person] || {};
+    byPerson[r.person][r.date] = Number(r.usd) || 0;
+    dateSet.add(r.date);
+  });
+  const dates = [...dateSet].sort();
+  const activePerson = window.currentAdvertiser;
+  const datasets = Object.keys(byPerson).map(person => {
+    const color = (typeof PERSON_COLORS !== 'undefined' && PERSON_COLORS[person]) || '#667eea';
+    const isActive = !activePerson || activePerson === person;
+    return {
+      label: person,
+      data: dates.map(d => byPerson[person][d] || 0),
+      borderColor: color,
+      backgroundColor: color + '20',
+      borderWidth: isActive ? 2.5 : 1,
+      tension: 0.3,
+      fill: false,
+      pointRadius: 2,
+      pointHoverRadius: 4,
+      opacity: isActive ? 1 : 0.3,
+    };
+  });
+  const labels = dates.map(d => { const p = d.split('-'); return (p[1] || '') + '/' + (p[2] || ''); });
+  renderChart('chartDailyByPerson', {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { color: '#555', boxWidth: 12, padding: 10, font: { size: 11 } } },
+        tooltip: { callbacks: { label: (ctx) => ` ${ctx.dataset.label}: ${fmtUsd(ctx.parsed.y)}` } },
+      },
+      scales: {
+        x: { ticks: { color: '#666', maxRotation: 45, font: { size: 10 } }, grid: { display: false } },
+        y: { ticks: { color: '#666', callback: v => fmtUsdShort(v) }, grid: { color: 'rgba(0,0,0,0.06)' } },
+      },
+    },
+  });
+}
+
+function renderMerchantTabs(byPerson) {
+  const tabs = document.getElementById('merchantTabs');
+  if (!tabs) return;
+  const persons = [...byPerson].sort((a, b) => (Number(b.totalUsd) || 0) - (Number(a.totalUsd) || 0)).map(p => p.person);
+  const active = window.currentAdvertiser;
+  tabs.innerHTML = ['<button class="merchant-tab' + (!active ? ' active' : '') + '" data-person="">All</button>']
+    .concat(persons.map(p => {
+      const color = (typeof PERSON_COLORS !== 'undefined' && PERSON_COLORS[p]) || '#667eea';
+      const isActive = active === p;
+      return `<button class="merchant-tab${isActive ? ' active' : ''}" data-person="${p}" style="border-color:${isActive ? color : 'rgba(102,126,234,0.3)'};color:${isActive ? '#fff' : color};background:${isActive ? color : 'transparent'};">${p}</button>`;
+    })).join('');
+  tabs.querySelectorAll('.merchant-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      window.currentAdvertiser = btn.dataset.person || null;
+      renderAdvertiserCards(byPerson, state.lastDailyByPerson || []);
+      renderMultiLineDaily(state.lastDailyByPerson || []);
+      renderMerchantTabs(byPerson);
+      loadMerchantsForPerson(window.currentAdvertiser);
+    });
+  });
+}
+
+async function loadMerchantsForPerson(person) {
+  try {
+    const url = API.topMerchants + '?limit=15' + (person ? '&person=' + encodeURIComponent(person) : '');
+    const rows = await fetchJson(url);
+    renderTopMerchants(rows || []);
+  } catch (e) { console.warn(e); }
+}
+
+function renderTopMerchants(rows) {
+  const tbody = document.getElementById('tblTopMerchants');
+  if (!tbody) return;
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="5" style="color:#999;text-align:center;padding:20px;">No merchants data.</td></tr>'; return; }
+  tbody.innerHTML = rows.map(r => {
+    const color = (typeof PERSON_COLORS !== 'undefined' && PERSON_COLORS[r.person]) || '#999';
+    const merchantClean = (r.merchant || '').replace(/\s+/g, ' ').trim();
+    return `<tr>
+      <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" class="mono">${merchantClean.replace(/</g, '&lt;')}</td>
+      <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:6px;"></span>${r.person || '--'}</td>
+      <td class="num">${fmtCount(r.count || 0)}</td>
+      <td class="num"><strong>${fmtUsd(Number(r.usd) || 0)}</strong></td>
+      <td class="num">${fmtPhp(Number(r.php) || 0)}</td>
+    </tr>`;
+  }).join('');
 }
 
 // ══════════════════════════════════════════════════════════

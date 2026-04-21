@@ -1679,6 +1679,75 @@ app.get('/api/card-ledger/:cardNumber', requireDb, async (req, res) => {
   }
 });
 
+// GET /api/ads/daily-by-person -----------------------------------------------
+// Flat array: [{person, date, php, usd, count}] — one row per person per date.
+// Frontend pivots into per-advertiser time-series.
+app.get('/api/ads/daily-by-person', requireDb, async (req, res) => {
+  try {
+    const sql = `
+      SELECT person,
+             TO_CHAR(DATE(transaction_time), 'YYYY-MM-DD') AS date,
+             COALESCE(SUM(CASE WHEN type = 'Authorization' AND status IN ('Authorized','Success')
+                               THEN transaction_amount ELSE 0 END), 0)::float AS php,
+             COALESCE(SUM(CASE WHEN status IN ('Authorized','Success')
+                               THEN authorized_amount ELSE 0 END), 0)::float AS usd,
+             COUNT(*)::int AS count
+      FROM card_transactions
+      WHERE person IS NOT NULL AND transaction_time IS NOT NULL
+      GROUP BY person, DATE(transaction_time)
+      ORDER BY person, DATE(transaction_time) ASC
+    `;
+    const { rows } = await pgPool.query(sql);
+    res.json(rows);
+  } catch (err) {
+    console.error('Ads daily-by-person error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/ads/top-merchants?person=X&limit=10 -------------------------------
+// Top merchants by USD spend. Optional `person` filter; omit for all-advertiser view.
+// `limit` defaults to 10, clamped to [1, 50]. Excludes zero-spend (failed-only) merchants.
+app.get('/api/ads/top-merchants', requireDb, async (req, res) => {
+  try {
+    const { person } = req.query;
+    let limit = parseInt(req.query.limit, 10);
+    if (!Number.isFinite(limit) || limit < 1) limit = 10;
+    if (limit > 50) limit = 50;
+
+    const params = [];
+    let personClause = '';
+    if (person && typeof person === 'string' && person.trim() !== '') {
+      params.push(person);
+      personClause = `AND person = $${params.length}`;
+    }
+    params.push(limit);
+    const limitIdx = params.length;
+
+    const sql = `
+      SELECT merchant_name AS merchant,
+             person,
+             COUNT(*)::int AS count,
+             COALESCE(SUM(CASE WHEN type = 'Authorization' AND status IN ('Authorized','Success')
+                               THEN transaction_amount ELSE 0 END), 0)::float AS php,
+             COALESCE(SUM(CASE WHEN status IN ('Authorized','Success')
+                               THEN authorized_amount ELSE 0 END), 0)::float AS usd
+      FROM card_transactions
+      WHERE merchant_name IS NOT NULL AND merchant_name <> ''
+        ${personClause}
+      GROUP BY merchant_name, person
+      HAVING COALESCE(SUM(CASE WHEN status IN ('Authorized','Success') THEN authorized_amount ELSE 0 END), 0) > 0
+      ORDER BY usd DESC
+      LIMIT $${limitIdx}
+    `;
+    const { rows } = await pgPool.query(sql, params);
+    res.json(rows);
+  } catch (err) {
+    console.error('Ads top-merchants error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`QUAD OPEX Dashboard running on port ${PORT}`);
 });
