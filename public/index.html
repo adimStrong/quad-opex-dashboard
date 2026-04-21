@@ -81,6 +81,18 @@ tr:hover td{background:rgba(255,255,255,0.04)}
 .loading-text{margin-top:16px;color:var(--text-dim);font-size:.9rem}
 .error-banner{background:rgba(244,67,54,0.15);border:1px solid rgba(244,67,54,0.3);border-radius:12px;padding:16px 20px;margin-bottom:20px;display:none;font-size:.85rem;color:#ef9a9a}
 
+/* Ads tracker call-to-action link */
+.ads-cta{
+  display:inline-flex;align-items:center;gap:10px;
+  padding:10px 18px;border-radius:25px;
+  background:linear-gradient(135deg,#b388ff,#7c4dff);
+  color:#fff;font-weight:700;font-size:.82rem;text-decoration:none;letter-spacing:.3px;
+  box-shadow:0 6px 18px rgba(124,77,255,0.4);
+  transition:transform .2s ease, box-shadow .2s ease;
+}
+.ads-cta:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(124,77,255,0.55)}
+.ads-cta .dot-ads{width:8px;height:8px;border-radius:50%;background:#fff;display:inline-block;animation:pulse 2s infinite}
+
 /* Tablet */
 @media(max-width:1200px){
   .grid-4{grid-template-columns:repeat(2,1fr)}
@@ -152,6 +164,7 @@ tr:hover td{background:rgba(255,255,255,0.04)}
   <div class="header">
     <h1>QUAD Dashboard</h1>
     <div class="header-meta">
+      <a class="ads-cta" href="ads.html" title="Open Ads Card Spend Tracker"><span class="dot-ads"></span> Ads Card Tracker &rarr;</a>
       <span><span class="dot"></span> Live</span>
       <span id="lastUpdated">Last updated: --</span>
       <span>Auto-refresh: 5 min</span>
