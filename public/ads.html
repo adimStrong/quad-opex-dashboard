@@ -466,6 +466,7 @@ tr:hover td { background: rgba(102, 126, 234, 0.04); }
   <div class="nav-bar">
     <a class="nav-link" href="index.html">&larr; Back to QUAD Dashboard</a>
     <a class="nav-link active" href="ads.html">Ads Card Tracker</a>
+    <a class="nav-link" href="wallet.html">&#128176; Wallet (Mark)</a>
   </div>
 
   <!-- ═══ Upload (Card Statement + Wallet Ledger tabs) ═══ -->
@@ -1609,8 +1610,16 @@ function renderReversal(rows) {
 // ══════════════════════════════════════════════════════════
 // FX Rate trend
 // ══════════════════════════════════════════════════════════
-function renderFx(rows) {
-  if (!Array.isArray(rows)) rows = [];
+function renderFx(data) {
+  // Backend returns { current, trend:[{date,rate}] } OR legacy bare array
+  let rows = [];
+  let current = null;
+  if (Array.isArray(data)) {
+    rows = data;
+  } else if (data && typeof data === 'object') {
+    rows = Array.isArray(data.trend) ? data.trend : [];
+    current = Number(data.current || 0);
+  }
   const sorted = [...rows].sort((a, b) => String(a.date).localeCompare(String(b.date)));
   const labels = sorted.map(r => {
     const p = String(r.date).split('-');
@@ -1618,7 +1627,7 @@ function renderFx(rows) {
   });
   const rates = sorted.map(r => Number(r.rate || 0));
 
-  const avg = rates.length ? rates.reduce((a, b) => a + b, 0) / rates.length : 0;
+  const avg = current || (rates.length ? rates.reduce((a, b) => a + b, 0) / rates.length : 0);
   document.getElementById('fxAvg').textContent = avg > 0 ? avg.toFixed(4) + ' ₱/$' : '--';
 
   renderChart('chartFx', {
