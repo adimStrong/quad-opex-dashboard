@@ -766,6 +766,83 @@ tr:hover td { background: rgba(102, 126, 234, 0.04); }
       <div class="alert-list" id="alertList"></div>
     </div>
 
+    <!-- ═══ Card Ledger (Per-Card Running Balance) ═══ -->
+    <div class="card" style="border:2px solid rgba(102,126,234,0.3);">
+      <h2 class="card-title">📒 Card Ledger — Per-Card Running Balance</h2>
+      <p style="color:#666;font-size:0.9rem;margin:0 0 16px 0;">
+        Unified chronological view per card: wallet loads (IN) + Facebook charges (OUT) with running USD balance. Reversals count as IN, failed auths are skipped.
+      </p>
+
+      <div class="filter-row" style="margin-bottom:16px;">
+        <div style="flex:1;min-width:300px;">
+          <label style="font-size:0.75rem;color:#666;font-weight:600;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px;">Select Card</label>
+          <select id="ledgerCardSelect" style="width:100%;">
+            <option value="">— Choose a card —</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Ledger header KPIs -->
+      <div id="ledgerHeader" style="display:none;margin-bottom:16px;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;">
+          <div class="metric-card" style="padding:14px;">
+            <div class="metric-label">Card</div>
+            <div class="metric-value mono" id="lhCard" style="font-size:1.1rem;">----</div>
+            <div class="metric-sub" id="lhPerson">--</div>
+          </div>
+          <div class="metric-card" style="padding:14px;border-left:4px solid #2ed573;">
+            <div class="metric-label">Total IN</div>
+            <div class="metric-value" id="lhIn" style="font-size:1.3rem;color:#2ed573;">$0</div>
+            <div class="metric-sub" id="lhInSub">-- loads</div>
+          </div>
+          <div class="metric-card" style="padding:14px;border-left:4px solid #e94560;">
+            <div class="metric-label">Total OUT</div>
+            <div class="metric-value" id="lhOut" style="font-size:1.3rem;color:#e94560;">$0</div>
+            <div class="metric-sub" id="lhOutSub">-- spends</div>
+          </div>
+          <div class="metric-card" style="padding:14px;border-left:4px solid #667eea;">
+            <div class="metric-label">Current Balance</div>
+            <div class="metric-value" id="lhBalance" style="font-size:1.3rem;color:#667eea;">$0</div>
+            <div class="metric-sub" id="lhBalanceSub">USD</div>
+          </div>
+          <div class="metric-card" style="padding:14px;border-left:4px solid #f5a623;">
+            <div class="metric-label">Fees Bled</div>
+            <div class="metric-value" id="lhFees" style="font-size:1.3rem;color:#f5a623;">$0</div>
+            <div class="metric-sub" id="lhFeesSub">FX + cross-border</div>
+          </div>
+          <div class="metric-card" style="padding:14px;">
+            <div class="metric-label">Issues</div>
+            <div class="metric-value" id="lhIssues" style="font-size:1.3rem;">0</div>
+            <div class="metric-sub" id="lhIssuesSub">failed / reversed</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ledger entries -->
+      <div id="ledgerEmpty" style="padding:40px;text-align:center;color:#999;">
+        Select a card above to view its full transaction ledger.
+      </div>
+
+      <div id="ledgerTableWrap" style="display:none;overflow-x:auto;max-height:600px;overflow-y:auto;">
+        <table class="table" style="min-width:900px;">
+          <thead style="position:sticky;top:0;background:#fff;z-index:1;">
+            <tr>
+              <th>Date / Time</th>
+              <th>Flow</th>
+              <th>Type</th>
+              <th>Description / Merchant</th>
+              <th class="num">USD</th>
+              <th class="num">PHP</th>
+              <th class="num">Fees</th>
+              <th class="num">Running Balance</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="ledgerBody"></tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- ═══ Transaction Log ═══ -->
     <div class="card">
       <h2 class="card-title">Transaction Log</h2>
@@ -856,6 +933,9 @@ const API = {
   walletByCard:  '/api/wallet/by-card',
   walletTimeline:'/api/wallet/timeline',
   walletRecon:   '/api/wallet/reconciliation',
+  // Card ledger endpoints
+  cardsList:     '/api/cards',
+  cardLedger:    '/api/card-ledger/',
 };
 
 const PAGE_SIZE = 100;
@@ -1179,6 +1259,11 @@ async function refreshAll() {
 
     // Wallet section: render if wallet data, else show empty message inside wallet section
     renderWallet(hasWalletData, walletSummary, walletTimeline, walletByCard, walletRecon);
+
+    // Card Ledger: populate selector (combined card+wallet list)
+    if (anyData) {
+      await loadCardsList();
+    }
   } catch (e) {
     console.error(e);
     toast('Failed to load data: ' + e.message, 'error');
@@ -1721,6 +1806,137 @@ function renderWallet(hasData, summary, timeline, byCard, recon) {
       }).join('')
     : `<tr><td colspan="6" class="muted" style="text-align:center;padding:20px;">No reconciliation data yet</td></tr>`;
 }
+
+// ══════════════════════════════════════════════════════════
+// CARD LEDGER (per-card unified timeline + running balance)
+// ══════════════════════════════════════════════════════════
+async function loadCardsList() {
+  try {
+    const cards = await fetchJson(API.cardsList);
+    const sel = document.getElementById('ledgerCardSelect');
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">— Choose a card —</option>' + cards.map(c => {
+      const last4 = c.cardLast4 || '----';
+      const person = c.person || '(wallet-only)';
+      const spent = Number(c.spentUsd || 0);
+      const loaded = Number(c.loadedUsd || 0);
+      const info = [];
+      if (loaded > 0) info.push('loaded ' + fmtUsd(loaded));
+      if (spent > 0) info.push('spent ' + fmtUsd(spent));
+      const meta = info.length ? ' — ' + info.join(', ') : '';
+      return `<option value="${c.cardNumber || last4}">•••• ${last4} (${person})${meta}</option>`;
+    }).join('');
+    if (prev) sel.value = prev;
+  } catch (e) {
+    console.warn('cards list:', e);
+  }
+}
+
+async function loadCardLedger(cardNumber) {
+  if (!cardNumber) {
+    document.getElementById('ledgerHeader').style.display = 'none';
+    document.getElementById('ledgerTableWrap').style.display = 'none';
+    document.getElementById('ledgerEmpty').style.display = 'block';
+    return;
+  }
+  try {
+    showLoader('Loading ledger...');
+    const data = await fetchJson(API.cardLedger + encodeURIComponent(cardNumber));
+    renderCardLedger(data);
+  } catch (e) {
+    toast('Failed to load ledger: ' + e.message, 'error');
+  } finally {
+    hideLoader();
+  }
+}
+
+function renderCardLedger(data) {
+  const s = data.summary || {};
+  const entries = data.entries || [];
+
+  document.getElementById('ledgerEmpty').style.display = 'none';
+  document.getElementById('ledgerHeader').style.display = 'block';
+  document.getElementById('ledgerTableWrap').style.display = entries.length ? 'block' : 'none';
+
+  // Header
+  document.getElementById('lhCard').textContent = '•••• ' + (data.cardLast4 || '----');
+  const personEl = document.getElementById('lhPerson');
+  if (data.person) {
+    personEl.innerHTML = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${PERSON_COLORS[data.person] || '#999'};margin-right:6px;"></span>${data.person}`;
+  } else {
+    personEl.textContent = '(unassigned)';
+  }
+  document.getElementById('lhIn').textContent = fmtUsd(s.totalIn || 0);
+  document.getElementById('lhInSub').textContent = (s.loadCount || 0) + ' load' + ((s.loadCount === 1) ? '' : 's');
+  document.getElementById('lhOut').textContent = fmtUsd(s.totalOut || 0);
+  document.getElementById('lhOutSub').textContent = (s.spendCount || 0) + ' charge' + ((s.spendCount === 1) ? '' : 's');
+  const bal = Number(s.balance || 0);
+  document.getElementById('lhBalance').textContent = fmtUsd(bal);
+  document.getElementById('lhBalance').style.color = bal < 0 ? '#e94560' : '#667eea';
+  document.getElementById('lhBalanceSub').textContent = bal < 0 ? 'OVERSPENT' : 'remaining';
+  document.getElementById('lhFees').textContent = fmtUsd(s.totalFees || 0);
+  document.getElementById('lhFeesSub').textContent = (s.totalOut > 0)
+    ? ((s.totalFees / s.totalOut) * 100).toFixed(2) + '% of spend'
+    : '--';
+  const issues = (s.failedCount || 0) + (s.reversalCount || 0);
+  document.getElementById('lhIssues').textContent = issues;
+  document.getElementById('lhIssuesSub').textContent = `${s.failedCount || 0} failed · ${s.reversalCount || 0} reversed`;
+
+  // Body
+  const tbody = document.getElementById('ledgerBody');
+  if (!entries.length) {
+    tbody.innerHTML = '';
+    return;
+  }
+
+  tbody.innerHTML = entries.map(e => {
+    const flowBadge = e.direction === 'IN'
+      ? '<span class="badge" style="background:rgba(46,213,115,0.15);color:#2ed573;">▼ IN</span>'
+      : '<span class="badge" style="background:rgba(233,69,96,0.15);color:#e94560;">▲ OUT</span>';
+
+    let statusBadge = '';
+    const statusRaw = (e.status || '').toLowerCase();
+    if (statusRaw === 'fail') statusBadge = '<span class="badge badge-failed">Failed</span>';
+    else if (statusRaw === 'success' || statusRaw === 'authorized') {
+      if ((e.type || '').toLowerCase() === 'reversal') {
+        statusBadge = '<span class="badge badge-reversed">Reversed</span>';
+      } else {
+        statusBadge = '<span class="badge badge-approved">Approved</span>';
+      }
+    } else {
+      statusBadge = '<span class="badge">' + (e.status || '--') + '</span>';
+    }
+
+    const typeLabel = e.source === 'wallet' ? '💰 Load' : (
+      (e.type || '').toLowerCase() === 'reversal' ? '↩ Reversal' : '💳 Charge'
+    );
+
+    const merchantOrDesc = (e.merchant || e.description || '--').replace(/</g, '&lt;');
+    const runColor = (e.runningBalance || 0) < 0 ? '#e94560' : (e.direction === 'IN' ? '#2ed573' : '#333');
+    const isFailed = e.isFailed;
+    const rowStyle = isFailed ? 'style="opacity:0.5;text-decoration:line-through;"' : '';
+
+    return `<tr ${rowStyle}>
+      <td class="mono" style="white-space:nowrap;">${fmtDateTime(e.time)}</td>
+      <td>${flowBadge}</td>
+      <td style="white-space:nowrap;">${typeLabel}</td>
+      <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${merchantOrDesc}</td>
+      <td class="num">${fmtUsd(e.amountUsd || 0)}</td>
+      <td class="num">${e.amountPhp ? fmtPhp(e.amountPhp) : '--'}</td>
+      <td class="num" style="color:#f5a623;">${e.fees ? fmtUsd(e.fees) : '--'}</td>
+      <td class="num" style="color:${runColor};font-weight:700;">${fmtUsd(e.runningBalance || 0)}</td>
+      <td>${statusBadge}</td>
+    </tr>`;
+  }).join('');
+}
+
+// Wire up card selector
+document.addEventListener('DOMContentLoaded', () => {
+  const sel = document.getElementById('ledgerCardSelect');
+  if (sel) {
+    sel.addEventListener('change', (e) => loadCardLedger(e.target.value));
+  }
+});
 
 // ══════════════════════════════════════════════════════════
 // Transactions (paginated + filters)

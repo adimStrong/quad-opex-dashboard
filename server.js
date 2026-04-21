@@ -1441,6 +1441,244 @@ app.delete('/api/wallet/transactions/:id', requireDb, async (req, res) => {
   }
 });
 
+// ===========================================================================
+// CARD LEDGER — unified per-card timeline (wallet loads IN + card spends OUT)
+// ===========================================================================
+
+// GET /api/cards — list all cards (union of card_transactions + wallet_transactions)
+app.get('/api/cards', requireDb, async (req, res) => {
+  try {
+    const { rows } = await pgPool.query(`
+      WITH card_side AS (
+        SELECT
+          card_number,
+          RIGHT(REGEXP_REPLACE(card_number, '[^0-9]', '', 'g'), 4) AS card_last4,
+          MAX(person) AS person,
+          COUNT(*) FILTER (WHERE type = 'Authorization' AND status IN ('Authorized','Success')) AS spend_count,
+          COALESCE(SUM(authorized_amount) FILTER (WHERE type = 'Authorization' AND status IN ('Authorized','Success')), 0) AS spent_usd,
+          COALESCE(SUM(transaction_amount) FILTER (WHERE type = 'Authorization' AND status IN ('Authorized','Success')), 0) AS spent_php,
+          MIN(transaction_time) AS first_tx,
+          MAX(transaction_time) AS last_tx
+        FROM card_transactions
+        WHERE card_number IS NOT NULL
+        GROUP BY card_number
+      ),
+      wallet_side AS (
+        SELECT
+          transaction_target AS card_number,
+          RIGHT(REGEXP_REPLACE(transaction_target, '[^0-9]', '', 'g'), 4) AS card_last4,
+          COUNT(*) AS load_count,
+          COALESCE(SUM(amount), 0) AS loaded_usd,
+          MIN(transaction_time) AS first_load,
+          MAX(transaction_time) AS last_load
+        FROM wallet_transactions
+        WHERE transaction_target IS NOT NULL
+          AND transaction_target <> ''
+          AND business_type = 'Card Deposit'
+          AND direction = 'Out'
+        GROUP BY transaction_target
+      )
+      SELECT
+        COALESCE(c.card_number, w.card_number) AS "cardNumber",
+        COALESCE(c.card_last4, w.card_last4) AS "cardLast4",
+        c.person AS "person",
+        COALESCE(w.loaded_usd, 0) AS "loadedUsd",
+        COALESCE(w.load_count, 0) AS "loadCount",
+        COALESCE(c.spent_usd, 0) AS "spentUsd",
+        COALESCE(c.spent_php, 0) AS "spentPhp",
+        COALESCE(c.spend_count, 0) AS "spendCount",
+        COALESCE(w.loaded_usd, 0) - COALESCE(c.spent_usd, 0) AS "balanceUsd",
+        LEAST(c.first_tx, w.first_load) AS "firstActivity",
+        GREATEST(c.last_tx, w.last_load) AS "lastActivity"
+      FROM card_side c
+      FULL OUTER JOIN wallet_side w ON c.card_number = w.card_number
+      ORDER BY "spentUsd" DESC, "loadedUsd" DESC
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error('Cards list error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/card-ledger/:cardNumber — unified chronological ledger for one card
+// cardNumber is URL-encoded masked format like "537100******3077"
+// Alternatively accepts last 4 digits
+app.get('/api/card-ledger/:cardNumber', requireDb, async (req, res) => {
+  try {
+    const raw = decodeURIComponent(req.params.cardNumber || '');
+    if (!raw) return res.status(400).json({ error: 'cardNumber required' });
+
+    // If only 4 digits provided, match by last 4
+    const isLast4 = /^\d{4}$/.test(raw);
+    const matchClause = isLast4
+      ? `RIGHT(REGEXP_REPLACE(card_number, '[^0-9]', '', 'g'), 4) = $1`
+      : `card_number = $1`;
+    const walletMatchClause = isLast4
+      ? `RIGHT(REGEXP_REPLACE(transaction_target, '[^0-9]', '', 'g'), 4) = $1`
+      : `transaction_target = $1`;
+
+    // Fetch card header info
+    const headerResult = await pgPool.query(
+      `SELECT
+         card_number AS "cardNumber",
+         RIGHT(REGEXP_REPLACE(card_number, '[^0-9]', '', 'g'), 4) AS "cardLast4",
+         MAX(person) AS "person"
+       FROM card_transactions
+       WHERE ${matchClause}
+       GROUP BY card_number
+       LIMIT 1`,
+      [raw]
+    );
+
+    // Fetch wallet loads for this card (IN events)
+    const loadsResult = await pgPool.query(
+      `SELECT
+         id,
+         transaction_id AS "refId",
+         transaction_time AS "time",
+         amount AS "amountUsd",
+         currency,
+         business_type AS "businessType",
+         remarks,
+         balance_after AS "walletBalanceAfter"
+       FROM wallet_transactions
+       WHERE ${walletMatchClause}
+         AND business_type = 'Card Deposit'
+         AND direction = 'Out'
+       ORDER BY transaction_time ASC`,
+      [raw]
+    );
+
+    // Fetch card spends (OUT events)
+    const spendsResult = await pgPool.query(
+      `SELECT
+         id,
+         transaction_serial AS "refId",
+         transaction_time AS "time",
+         transaction_amount AS "amountPhp",
+         authorized_amount AS "amountUsd",
+         authorization_fee AS "authFee",
+         cross_border_fee AS "xBorderFee",
+         merchant_name AS "merchant",
+         type,
+         status,
+         description
+       FROM card_transactions
+       WHERE ${matchClause}
+       ORDER BY transaction_time ASC`,
+      [raw]
+    );
+
+    // Merge into unified ledger (IN then OUT for same-timestamp ties)
+    const entries = [];
+    loadsResult.rows.forEach(r => {
+      entries.push({
+        id: 'w' + r.id,
+        time: r.time,
+        direction: 'IN',
+        type: r.businessType || 'Card Deposit',
+        source: 'wallet',
+        amountUsd: Number(r.amountUsd) || 0,
+        amountPhp: null,
+        description: r.remarks || 'Wallet load',
+        status: 'Success',
+        refId: r.refId
+      });
+    });
+    spendsResult.rows.forEach(r => {
+      const isReversal = (r.type || '').toLowerCase() === 'reversal';
+      const isFailed = (r.status || '').toLowerCase() === 'fail';
+      // Only count successful Authorizations as OUT; Reversals as IN; Failed as 0
+      let direction = 'OUT';
+      let effectiveUsd = Number(r.amountUsd) || 0;
+      if (isReversal) {
+        direction = 'IN';
+      } else if (isFailed) {
+        direction = 'OUT';
+        effectiveUsd = 0; // failed auths don't move money
+      }
+      const fees = (Number(r.authFee) || 0) + (Number(r.xBorderFee) || 0);
+      entries.push({
+        id: 'c' + r.id,
+        time: r.time,
+        direction,
+        type: r.type || 'Authorization',
+        source: 'card',
+        amountUsd: effectiveUsd,
+        amountPhp: Number(r.amountPhp) || 0,
+        fees,
+        merchant: r.merchant,
+        status: r.status,
+        description: r.description || '',
+        refId: r.refId,
+        isFailed
+      });
+    });
+
+    // Sort by time then IN before OUT
+    entries.sort((a, b) => {
+      const tA = new Date(a.time).getTime();
+      const tB = new Date(b.time).getTime();
+      if (tA !== tB) return tA - tB;
+      if (a.direction === b.direction) return 0;
+      return a.direction === 'IN' ? -1 : 1;
+    });
+
+    // Compute running balance (USD only — PHP varies by FX rate)
+    let balance = 0;
+    let totalIn = 0;
+    let totalOut = 0;
+    let totalFees = 0;
+    entries.forEach(e => {
+      if (e.direction === 'IN') {
+        balance += e.amountUsd;
+        totalIn += e.amountUsd;
+      } else if (!e.isFailed) {
+        balance -= e.amountUsd;
+        totalOut += e.amountUsd;
+      }
+      totalFees += e.fees || 0;
+      e.runningBalance = balance;
+    });
+
+    const header = headerResult.rows[0] || {};
+    // If header missing (wallet-only card), synthesize it
+    if (!header.cardNumber && loadsResult.rows.length > 0) {
+      const anyLoad = await pgPool.query(
+        `SELECT transaction_target AS "cardNumber",
+                RIGHT(REGEXP_REPLACE(transaction_target, '[^0-9]', '', 'g'), 4) AS "cardLast4"
+         FROM wallet_transactions
+         WHERE ${walletMatchClause} AND transaction_target IS NOT NULL
+         LIMIT 1`,
+        [raw]
+      );
+      if (anyLoad.rows[0]) Object.assign(header, anyLoad.rows[0], { person: null });
+    }
+
+    res.json({
+      cardNumber: header.cardNumber || null,
+      cardLast4: header.cardLast4 || null,
+      person: header.person || null,
+      summary: {
+        totalIn,
+        totalOut,
+        totalFees,
+        balance,
+        loadCount: loadsResult.rows.length,
+        spendCount: spendsResult.rows.length,
+        failedCount: spendsResult.rows.filter(r => (r.status || '').toLowerCase() === 'fail').length,
+        reversalCount: spendsResult.rows.filter(r => (r.type || '').toLowerCase() === 'reversal').length,
+        entryCount: entries.length
+      },
+      entries
+    });
+  } catch (err) {
+    console.error('Card ledger error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`QUAD OPEX Dashboard running on port ${PORT}`);
 });
