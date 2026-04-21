@@ -469,64 +469,34 @@ tr:hover td { background: rgba(102, 126, 234, 0.04); }
     <a class="nav-link" href="wallet.html">&#128176; Wallet (Mark)</a>
   </div>
 
-  <!-- ═══ Upload (Card Statement + Wallet Ledger tabs) ═══ -->
+  <!-- ═══ Upload (Card Statement only — wallet moved to /wallet.html) ═══ -->
   <div class="card">
-    <div class="upload-tabs" style="display:flex;gap:8px;margin-bottom:18px;border-bottom:2px solid rgba(102,126,234,0.15);">
-      <button class="upload-tab active" data-tab="card" id="tabCard" style="background:none;border:none;padding:10px 18px;font-size:0.95rem;font-weight:700;color:#667eea;cursor:pointer;border-bottom:3px solid #667eea;margin-bottom:-2px;transition:all 0.2s ease;">
-        Card Statement
-      </button>
-      <button class="upload-tab" data-tab="wallet" id="tabWallet" style="background:none;border:none;padding:10px 18px;font-size:0.95rem;font-weight:700;color:#999;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all 0.2s ease;">
-        Wallet Ledger (Mark)
-      </button>
-    </div>
-
-    <!-- Card Statement Upload Pane -->
-    <div id="paneCard" class="upload-pane">
-      <h2 class="card-title" style="margin-bottom:16px;">Upload Card Statement CSV</h2>
-      <div class="upload-grid">
-        <div class="upload-control">
-          <label>Person</label>
-          <select id="uploadPerson">
-            <option value="Jason">Jason</option>
-            <option value="Jomar">Jomar</option>
-            <option value="Mika">Mika</option>
-            <option value="Ron">Ron</option>
-            <option value="Shila">Shila</option>
-          </select>
-        </div>
-        <div class="upload-control">
-          <label>CSV File(s)</label>
-          <div class="drop-zone" id="dropZone">
-            <div class="drop-zone-text" id="dropZoneText">
-              Drag &amp; drop CSV here or <strong>click to browse</strong>
-            </div>
-            <input type="file" id="fileInput" accept=".csv" multiple>
+    <h2 class="card-title" style="margin-bottom:16px;">Upload Card Statement CSV</h2>
+    <div class="upload-grid">
+      <div class="upload-control">
+        <label>Person</label>
+        <select id="uploadPerson">
+          <option value="Jason">Jason</option>
+          <option value="Jomar">Jomar</option>
+          <option value="Mika">Mika</option>
+          <option value="Ron">Ron</option>
+          <option value="Shila">Shila</option>
+        </select>
+      </div>
+      <div class="upload-control">
+        <label>CSV File(s)</label>
+        <div class="drop-zone" id="dropZone">
+          <div class="drop-zone-text" id="dropZoneText">
+            Drag &amp; drop CSV here or <strong>click to browse</strong>
           </div>
+          <input type="file" id="fileInput" accept=".csv" multiple>
         </div>
-        <button class="btn" id="uploadBtn" disabled>Upload</button>
       </div>
-      <div class="upload-result" id="uploadResult"></div>
+      <button class="btn" id="uploadBtn" disabled>Upload</button>
     </div>
-
-    <!-- Wallet Ledger Upload Pane -->
-    <div id="paneWallet" class="upload-pane" style="display:none;">
-      <h2 class="card-title" style="margin-bottom:16px;">Upload Wallet Ledger CSV (Mark)</h2>
-      <div class="upload-grid" style="grid-template-columns: 1fr auto;">
-        <div class="upload-control">
-          <label>Wallet CSV File(s)</label>
-          <div class="drop-zone" id="walletDropZone">
-            <div class="drop-zone-text" id="walletDropZoneText">
-              Drag &amp; drop Mark.csv here or <strong>click to browse</strong>
-            </div>
-            <input type="file" id="walletFileInput" accept=".csv" multiple>
-          </div>
-        </div>
-        <button class="btn" id="walletUploadBtn" disabled>Upload</button>
-      </div>
-      <div class="upload-result" id="walletUploadResult"></div>
-      <div style="margin-top:12px;font-size:0.8rem;color:#888;">
-        USDT deposits in &amp; card loads out — tracks wallet funding flow vs card spend reconciliation.
-      </div>
+    <div class="upload-result" id="uploadResult"></div>
+    <div style="margin-top:12px;font-size:0.85rem;color:#888;">
+      For Mark wallet uploads, go to <a href="wallet.html" style="color:#667eea;font-weight:700;">💰 Wallet Funding page</a>.
     </div>
   </div>
 
@@ -576,88 +546,6 @@ tr:hover td { background: rgba(102, 126, 234, 0.04); }
         <div class="kpi-label">Date Range</div>
         <div class="kpi-value" id="kpiRange" style="font-size:1.3rem;">--</div>
         <div class="kpi-sub" id="kpiRangeSub">--</div>
-      </div>
-    </div>
-
-    <!-- ═══ Wallet Funding Section (Mark wallet ledger) ═══ -->
-    <div class="card" id="walletSection" style="border:2px solid rgba(102,126,234,0.18);background:linear-gradient(135deg,rgba(255,255,255,0.97),rgba(250,248,255,0.95));">
-      <h2 class="card-title">&#128176; Wallet Funding (Mark)</h2>
-
-      <!-- Empty state for wallet -->
-      <div id="walletEmpty" style="display:none;padding:30px 20px;text-align:center;color:#888;font-size:0.95rem;background:rgba(102,126,234,0.04);border-radius:12px;border:1px dashed rgba(102,126,234,0.2);">
-        <div style="font-size:2rem;margin-bottom:8px;opacity:0.5;">&#128202;</div>
-        <div>No wallet data. Upload <strong>Mark.csv</strong> to see funding flow.</div>
-      </div>
-
-      <!-- Wallet content wrapper -->
-      <div id="walletContent" style="display:none;">
-        <!-- Wallet KPI row -->
-        <div class="kpi-grid" style="margin-bottom:24px;">
-          <div class="kpi-card">
-            <div class="kpi-label">USDT Deposits In</div>
-            <div class="kpi-value usd" id="walletKpiIn">--</div>
-            <div class="kpi-sub" id="walletKpiInSub">--</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Card Loads Out</div>
-            <div class="kpi-value alert" id="walletKpiOut">--</div>
-            <div class="kpi-sub" id="walletKpiOutSub">--</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Current Wallet Balance</div>
-            <div class="kpi-value" id="walletKpiBal">--</div>
-            <div class="kpi-sub" id="walletKpiBalSub">--</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Net Flow</div>
-            <div class="kpi-value" id="walletKpiNet">--</div>
-            <div class="kpi-sub" id="walletKpiNetSub">in − out</div>
-          </div>
-        </div>
-
-        <!-- Wallet Timeline chart -->
-        <h3 style="font-size:1.05rem;font-weight:700;color:#667eea;margin-bottom:12px;padding-left:4px;">Wallet Flow Timeline</h3>
-        <div class="chart-wrap" style="height:320px;position:relative;margin-bottom:28px;">
-          <canvas id="chartWalletTimeline"></canvas>
-        </div>
-
-        <!-- Per-Card Loading Table -->
-        <h3 style="font-size:1.05rem;font-weight:700;color:#667eea;margin-bottom:12px;padding-left:4px;">Per-Card Loading</h3>
-        <div class="table-wrap" style="margin-bottom:28px;">
-          <table>
-            <thead>
-              <tr>
-                <th>Card</th>
-                <th class="num">Total Loaded USD</th>
-                <th class="num"># of Loads</th>
-                <th>First Load</th>
-                <th>Last Load</th>
-              </tr>
-            </thead>
-            <tbody id="tblWalletByCard"></tbody>
-          </table>
-        </div>
-
-        <!-- Reconciliation Table (money shot) -->
-        <h3 style="font-size:1.1rem;font-weight:700;color:#667eea;margin-bottom:12px;padding-left:4px;display:flex;align-items:center;gap:8px;">
-          <span>&#128269; Reconciliation: Loaded vs Spent</span>
-          <span style="font-size:0.72rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;">key insight</span>
-        </h3>
-        <div class="table-wrap" style="border:2px solid rgba(102,126,234,0.2);border-radius:14px;padding:4px;background:rgba(102,126,234,0.02);">
-          <table>
-            <thead>
-              <tr>
-                <th>Card</th>
-                <th>Person</th>
-                <th class="num">Loaded USD</th>
-                <th class="num">Spent USD</th>
-                <th>Utilization</th>
-                <th class="num">Remaining USD</th>
-              </tr>
-            </thead>
-            <tbody id="tblWalletRecon"></tbody>
-          </table>
-        </div>
       </div>
     </div>
 
@@ -1216,8 +1104,7 @@ async function fetchJson(url) {
 async function refreshAll() {
   showLoader('Refreshing data...');
   try {
-    const [summary, daily, hourly, byCard, failedPat, reversal, fxRate, plan,
-           walletSummary, walletTimeline, walletByCard, walletRecon] = await Promise.all([
+    const [summary, daily, hourly, byCard, failedPat, reversal, fxRate, plan] = await Promise.all([
       fetchJson(API.summary).catch(e => { console.warn(e); return null; }),
       fetchJson(API.daily).catch(e => { console.warn(e); return []; }),
       fetchJson(API.hourly).catch(e => { console.warn(e); return []; }),
@@ -1226,22 +1113,10 @@ async function refreshAll() {
       fetchJson(API.reversal).catch(e => { console.warn(e); return []; }),
       fetchJson(API.fxRate).catch(e => { console.warn(e); return []; }),
       fetchJson(API.plan).catch(e => { console.warn(e); return []; }),
-      fetchJson(API.walletSummary).catch(e => { console.warn(e); return null; }),
-      fetchJson(API.walletTimeline).catch(e => { console.warn(e); return []; }),
-      fetchJson(API.walletByCard).catch(e => { console.warn(e); return []; }),
-      fetchJson(API.walletRecon).catch(e => { console.warn(e); return []; }),
     ]);
 
-    const hasCardData   = summary && (Number(summary.totalTxns) > 0 || Number(summary.totalPhp) > 0);
-    const hasWalletData = walletSummary && (
-      Number(walletSummary.totalUsdtIn || 0) > 0 ||
-      Number(walletSummary.totalCardOut || 0) > 0 ||
-      Number(walletSummary.depositCount || 0) > 0 ||
-      Number(walletSummary.cardLoadCount || 0) > 0
-    );
-
-    // Show main content if EITHER card data OR wallet data exists
-    const anyData = hasCardData || hasWalletData;
+    const hasCardData = summary && (Number(summary.totalTxns) > 0 || Number(summary.totalPhp) > 0);
+    const anyData = hasCardData;
     document.getElementById('emptyState').style.display = anyData ? 'none' : 'block';
     document.getElementById('mainContent').style.display = anyData ? 'block' : 'none';
 
@@ -1257,9 +1132,6 @@ async function refreshAll() {
       renderFx(fxRate);
       await loadTransactions();
     }
-
-    // Wallet section: render if wallet data, else show empty message inside wallet section
-    renderWallet(hasWalletData, walletSummary, walletTimeline, walletByCard, walletRecon);
 
     // Card Ledger: populate selector (combined card+wallet list)
     if (anyData) {
