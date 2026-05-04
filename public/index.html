@@ -218,7 +218,23 @@ tr:hover td{background:rgba(255,255,255,0.04)}
       <div class="kpi-icon" style="background:rgba(156,39,176,0.15);color:var(--purple)">&#8383;</div>
       <div class="kpi-label">Ads Fund</div>
       <div class="kpi-value" id="dsAds">--</div>
-      <div class="kpi-sub" id="dsAdsCount">-- transfers</div>
+      <div class="kpi-sub" id="dsAdsCount">-- requests</div>
+      <div id="adsBudgetSub" style="margin-top:6px;font-size:.72rem;font-weight:600">--</div>
+    </div>
+  </div>
+
+  <!-- Hard Asset Cost summary (Pre-Op + Hard Assets vs budget) -->
+  <div class="glass kpi" id="hardAssetCostCard" style="margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;padding:20px 24px">
+    <div>
+      <div class="kpi-label">Hard Asset Cost <span style="font-weight:400;color:var(--text-dim);font-size:.78rem">(Pre-Op + Hard Assets)</span></div>
+      <div class="kpi-value" id="hacSpent" style="color:#FF9800">--</div>
+      <div class="kpi-sub" id="hacSub">-- of -- budget</div>
+    </div>
+    <div style="flex:1;min-width:240px;max-width:480px">
+      <div id="hacBar" style="height:14px;background:rgba(255,255,255,0.08);border-radius:7px;overflow:hidden">
+        <div id="hacFill" style="height:100%;width:0%;background:linear-gradient(90deg,#FF9800,#FFC107);border-radius:7px;transition:width .4s"></div>
+      </div>
+      <div id="hacRem" style="margin-top:8px;font-size:.78rem;color:var(--text-dim);text-align:right">remaining: --</div>
     </div>
   </div>
 
@@ -388,6 +404,10 @@ const SITE_COLORS = {
   'Win For Life (WFL)': '#4CAF50',
 };
 
+// Budget envelopes (hardcoded; edit + redeploy to change)
+const BUDGET_HARD_ASSET = 396000;    // covers Pre-Op + Hard Assets combined
+const BUDGET_ADS        = 1750004;   // ads-only allocation
+
 // ── Formatters ──
 function parseVal(v) {
   if (typeof v === 'number') return v;
@@ -481,6 +501,33 @@ function updateKPIs() {
   document.getElementById('dsHardCount').textContent = `${fmtCount(hardData.filter(r => r.total > 0).length)} items · ${fmtUsd(toUsd(hardTotal))}`;
   document.getElementById('dsAds').textContent = fmt(adsTotal);
   document.getElementById('dsAdsCount').textContent = `${fmtCount((adsFundData.transfers || []).length)} requests · ${fmtUsd(adsFundData.totalUsdt || 0)} USDT`;
+
+  // Hard Asset Cost (Pre-Op + Hard Assets) vs budget
+  const hacSpent = preopTotal + hardTotal;
+  const hacRem   = BUDGET_HARD_ASSET - hacSpent;
+  const hacPct   = Math.min(100, (hacSpent / BUDGET_HARD_ASSET) * 100);
+  document.getElementById('hacSpent').textContent = fmt(hacSpent);
+  document.getElementById('hacSub').textContent   =
+    `${fmt(hacSpent)} of ${fmt(BUDGET_HARD_ASSET)} budget · ${hacPct.toFixed(1)}% used`;
+  document.getElementById('hacFill').style.width  = hacPct + '%';
+  document.getElementById('hacRem').textContent   = hacRem >= 0
+    ? `remaining: ${fmt(hacRem)}`
+    : `OVER by ${fmt(-hacRem)}`;
+  document.getElementById('hacFill').style.background = hacRem >= 0
+    ? 'linear-gradient(90deg,#FF9800,#FFC107)'
+    : 'linear-gradient(90deg,#f44336,#ff5252)';
+
+  // Ads budget vs spent
+  const adsRem = BUDGET_ADS - adsTotal;
+  const adsPct = Math.min(100, (adsTotal / BUDGET_ADS) * 100);
+  const adsBudgetSub = document.getElementById('adsBudgetSub');
+  if (adsRem >= 0) {
+    adsBudgetSub.style.color = '#4CAF50';
+    adsBudgetSub.textContent = `${fmt(adsRem)} remaining of ${fmt(BUDGET_ADS)} budget · ${adsPct.toFixed(1)}% used`;
+  } else {
+    adsBudgetSub.style.color = '#f44336';
+    adsBudgetSub.textContent = `OVER BUDGET by ${fmt(-adsRem)} · cap was ${fmt(BUDGET_ADS)}`;
+  }
 }
 
 // ── Site Cards ──
