@@ -338,8 +338,8 @@ tr:hover td{background:rgba(255,255,255,0.04)}
     </table>
   </div>
 
-  <!-- Ads Fund (USDT Transfers) -->
-  <div class="section-title">Ads Fund - USDT Transfers</div>
+  <!-- Ads Fund (Budget Requests) -->
+  <div class="section-title">Ads Fund - Budget Requests</div>
   <div class="grid-3" style="margin-bottom:20px">
     <div class="glass kpi">
       <div class="kpi-icon" style="background:rgba(156,39,176,0.15);color:var(--purple)">&#8383;</div>
@@ -361,8 +361,8 @@ tr:hover td{background:rgba(255,255,255,0.04)}
   <div class="glass table-wrap">
     <table id="adsTable">
       <thead><tr>
-        <th>#</th><th>Date</th><th>Time</th><th>Recipient</th>
-        <th>USDT</th><th>Rate</th><th>PHP Equiv</th><th>Payment</th><th>Wallet</th><th>Network</th>
+        <th>#</th><th>Date</th><th>Req No.</th><th>Recipient</th><th>Department</th>
+        <th>Description</th><th>USDT</th><th>Rate</th><th>PHP</th><th>Payment</th>
       </tr></thead>
       <tbody id="adsBody"></tbody>
     </table>
@@ -452,25 +452,35 @@ function updateAll() {
 // ── KPIs ──
 function updateKPIs() {
   const d = fundFlowData;
-  document.getElementById('totalFundsIn').textContent = fmt(d.totalRemittance);
+  // Reference PHP→USD conversion: use avg rate from actual ads transfers; fallback 59.90
+  const rate = (adsFundData && adsFundData.avgRate) || 59.90;
+  const toUsd = php => (Number(php) || 0) / rate;
+  const fmtUsd = v => '$' + (Number(v) || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+  const totalIn = d.totalRemittance || 0;
+  document.getElementById('totalFundsIn').textContent = fmt(totalIn);
   const creditCount = ledgerData.filter(r => r.type === 'CREDIT').length;
-  document.getElementById('fundsInCount').textContent = fmtCount(creditCount) + ' remittances';
+  document.getElementById('fundsInCount').textContent = `${fmtCount(creditCount)} remittances · ${fmtUsd(toUsd(totalIn))}`;
 
   const preopTotal = preopData.reduce((s, r) => s + (r.total || 0), 0);
   const hardTotal = hardData.filter(r => r.total > 0).reduce((s, r) => s + (r.total || 0), 0);
   const adsTotal = adsFundData.totalPhp || 0;
   const totalSpent = preopTotal + hardTotal + adsTotal;
+  const cashBal = totalIn - totalSpent;
   document.getElementById('totalSpent').textContent = fmt(totalSpent);
-  document.getElementById('spentSub').textContent = `Pre-Op + Hard Assets + Ads Fund`;
-  document.getElementById('cashBalance').textContent = fmt(d.totalRemittance - totalSpent);
+  document.getElementById('spentSub').textContent = `Pre-Op + Hard Assets + Ads Fund · ${fmtUsd(toUsd(totalSpent))}`;
+  document.getElementById('cashBalance').textContent = fmt(cashBal);
+  // Cash Balance sub already says "Fund In - Cost"; enrich it
+  const cbSub = document.querySelector('#cashBalance + .kpi-sub');
+  if (cbSub) cbSub.textContent = `Fund In − Cost · ${fmtUsd(toUsd(cashBal))}`;
 
   // Cost breakdown cards
   document.getElementById('dsPreop').textContent = fmt(preopTotal);
-  document.getElementById('dsPreopCount').textContent = fmtCount(preopData.length) + ' items';
+  document.getElementById('dsPreopCount').textContent = `${fmtCount(preopData.length)} items · ${fmtUsd(toUsd(preopTotal))}`;
   document.getElementById('dsHard').textContent = fmt(hardTotal);
-  document.getElementById('dsHardCount').textContent = fmtCount(hardData.filter(r => r.total > 0).length) + ' items';
+  document.getElementById('dsHardCount').textContent = `${fmtCount(hardData.filter(r => r.total > 0).length)} items · ${fmtUsd(toUsd(hardTotal))}`;
   document.getElementById('dsAds').textContent = fmt(adsTotal);
-  document.getElementById('dsAdsCount').textContent = fmtCount((adsFundData.transfers || []).length) + ' transfers';
+  document.getElementById('dsAdsCount').textContent = `${fmtCount((adsFundData.transfers || []).length)} requests · ${fmtUsd(adsFundData.totalUsdt || 0)} USDT`;
 }
 
 // ── Site Cards ──
@@ -666,45 +676,108 @@ function formatDateDisplay(d) {
   return (p[1] || '') + '/' + (p[2] || '') + '/' + (p[0] || '');
 }
 
+// ── Wallet / Recipient → Person resolution (authoritative) ──
+const WALLET_MAP = {
+  '0x9a641a606c6561dc9de141b1797e02dcd4179eb6': 'Ron',
+  '0x5750802663d043da6a4c1184555cd40f9a79c316': 'Jason',
+  '0xf821128e2794457b8ba8f995804ba51e5748c030': 'Mika',
+  '0xfb6f63e3f309cfbceaa85250ac701dd2f8a0fc3c': 'Shila',
+  '0x35169b8ea0020cc9aba24f63d87f18b483a56a93': 'Jomar',
+  '0xfdffbf33e97d8a5671e7ebc7959439ce9a788181': 'John Paul',
+  '0xfc82ea2cf38d7674eb3468539da9f8fa7e42009a': 'Mark',
+};
+const RECIPIENT_MAP = {
+  'Ron Digiads':'Ron','Jason Digiads':'Jason','Mika Digiads':'Mika','Shila Digiads':'Shila',
+  'Mark SEO':'Mark','Mark Digiads':'Mark','Jomar Digiads':'Jomar','Jomar Jadrin':'Jomar',
+  'John Paul Digiads':'John Paul','John Paul Lepalam':'John Paul',
+  'JD':'JD Palma','JD Palma':'JD Palma',
+  'Jhon Derrick Plomos Palma':'JD Palma','John Derrick Plomos Palma':'JD Palma',
+  'Kelly':'Keldry','Kelly V':'Keldry','Kelly V.':'Keldry','Keldry':'Keldry',
+};
+const BANK_ACCOUNT_MAP = {
+  'jhon derrick plomos palma - tonik bank':'JD Palma',
+  'john derrick plomos palma - tonik bank':'JD Palma',
+  'kelly v. - gcash (+63 939 327 7674)':'Keldry',
+  'kelly v. - gcash':'Keldry',
+};
+function resolvePerson(t) {
+  const w = (t.wallet || '').trim().toLowerCase();
+  if (WALLET_MAP[w]) return WALLET_MAP[w];
+  if (BANK_ACCOUNT_MAP[w]) return BANK_ACCOUNT_MAP[w];
+  const r = (t.recipient || '').trim();
+  if (RECIPIENT_MAP[r]) return RECIPIENT_MAP[r];
+  const first = r.split(/\s+/)[0];
+  return first || 'Unassigned';
+}
+
 // ── Ads Fund Section ──
 function updateAdsFund() {
   const d = adsFundData;
   document.getElementById('adsUsdt').textContent = (d.totalUsdt || 0).toLocaleString('en-US', {minimumFractionDigits: 2}) + ' USDT';
   document.getElementById('adsPhp').textContent = fmt(d.totalPhp || 0);
-  document.getElementById('adsCount').textContent = fmtCount(d.count || 0) + ' transfers';
-  document.getElementById('adsRate').textContent = 'Avg rate: ' + (d.avgRate || 0).toFixed(4);
+  document.getElementById('adsCount').textContent = `${fmtCount(d.count || 0)} requests · ₱${fmt(d.totalPhp || 0).replace('₱','')} equiv`;
+  document.getElementById('adsRate').textContent = `$${(d.totalUsdt || 0).toLocaleString('en-US', {minimumFractionDigits: 2})} USDT · Avg rate ₱${(d.avgRate || 0).toFixed(2)}`;
 
-  // Chart by recipient
-  const byR = d.byRecipient || {};
-  const labels = Object.keys(byR).sort((a, b) => byR[b].php - byR[a].php);
-  const values = labels.map(l => byR[l].php);
-  const colors = ['#9C27B0', '#2196F3', '#FF6B35', '#4CAF50', '#f44336', '#FF9800'];
+  // Re-aggregate by resolved person (wallet first, recipient fallback)
+  const transfers = d.transfers || [];
+  const byPerson = {};
+  transfers.forEach(t => {
+    const p = resolvePerson(t);
+    byPerson[p] ||= { usdt: 0, php: 0, count: 0 };
+    byPerson[p].usdt += t.usdt || 0;
+    byPerson[p].php += t.php || 0;
+    byPerson[p].count++;
+  });
+
+  const labels = Object.keys(byPerson).sort((a, b) => byPerson[b].php - byPerson[a].php);
+  const values = labels.map(l => byPerson[l].php);
+  const colors = ['#9C27B0', '#2196F3', '#FF6B35', '#4CAF50', '#f44336', '#FF9800', '#00BCD4', '#FFEB3B'];
+  const fmtShortUsd = v => '$' + (v >= 1000 ? (v/1000).toFixed(1) + 'K' : v.toFixed(0));
   renderChart('chartAdsRecipient', {
     type: 'bar',
     data: { labels, datasets: [{ data: values, backgroundColor: labels.map((_, i) => colors[i % colors.length]), borderRadius: 6, barPercentage: 0.65 }] },
     options: {
       indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'right', color: '#fff', font: { size: 10, weight: 600 }, formatter: v => v > 0 ? fmtShort(v) : '' } },
-      scales: { x: pesoAxis(), y: { grid: { display: false } } }
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => {
+          const p = byPerson[ctx.label];
+          return [`PHP ${fmt(p.php)}`, `${p.usdt.toFixed(2)} USDT`, `${p.count} transfer${p.count === 1 ? '' : 's'}`];
+        }}},
+        datalabels: {
+          anchor: 'end', align: 'right', color: '#fff', font: { size: 10, weight: 600 }, textAlign: 'left',
+          formatter: (v, ctx) => {
+            if (v <= 0) return '';
+            const p = byPerson[ctx.chart.data.labels[ctx.dataIndex]];
+            return fmtShort(v) + '\n' + fmtShortUsd(p.usdt);
+          }
+        }
+      },
+      scales: { x: pesoAxis(), y: { grid: { display: false } } },
+      layout: { padding: { right: 70 } }
     },
     plugins: [ChartDataLabels]
   });
 
-  // Table
-  const transfers = d.transfers || [];
+  // Table — show both resolved person + raw recipient for transparency
   document.getElementById('adsBody').innerHTML = transfers.map(r => {
-    const walletShort = r.wallet ? r.wallet.substring(0, 12) + '...' : '';
+    const person = resolvePerson(r);
+    const rawRecipient = r.recipient || '<span style="color:var(--text-dim);font-style:italic">(blank)</span>';
+    const personCell = person === (r.recipient || '').split(/\s+/)[0]
+      ? `<span style="font-weight:600">${person}</span>`
+      : `<span style="font-weight:600">${person}</span> <span style="color:var(--text-dim);font-size:.72rem">(${rawRecipient})</span>`;
+    const desc = (r.description || '').replace(/\n/g, ' · ');
     return `<tr>
       <td>${r.no}</td>
       <td>${r.date}</td>
-      <td>${r.time}</td>
-      <td style="font-weight:600">${r.recipient}</td>
+      <td style="font-size:.78rem">${r.orderNo || ''}</td>
+      <td>${personCell}</td>
+      <td style="font-size:.78rem;color:var(--text-dim)">${r.department || ''}</td>
+      <td style="font-size:.78rem;color:var(--text-dim)" title="${desc}">${desc}</td>
       <td style="text-align:right">${r.usdt > 0 ? r.usdt.toLocaleString('en-US', {minimumFractionDigits: 2}) : '-'}</td>
       <td style="text-align:right">${r.rate > 0 ? r.rate.toFixed(4) : '-'}</td>
       <td style="text-align:right;font-weight:600">${fmt(r.php)}</td>
-      <td>${r.payment}</td>
-      <td style="font-size:.7rem;color:var(--text-dim)">${walletShort}</td>
-      <td>${r.network}</td>
+      <td style="font-size:.78rem">${r.payment || ''}</td>
     </tr>`;
   }).join('');
 }

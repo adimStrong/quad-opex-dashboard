@@ -334,28 +334,45 @@ app.get('/api/master', async (req, res) => {
   }
 });
 
-// API: Ads Fund (USDT Transfers)
+// API: Ads Fund (Ads Budget Request sheet)
+// Columns: A Date | B Requestors Name | C Department | D Expense Category |
+// E Description | F Released by | G Request No. | H Released USDT |
+// I Conversion Rate | J Released PHP | K Date Consumed | L Amount Consumed |
+// M Remaining Balance | N Mode of Payment
 app.get('/api/adsfund', async (req, res) => {
   try {
-    const rows = await getSheetData('USDT Transfers', 'A5:N50');
-    const headers = rows[0];
-    const data = rows.slice(1)
-      .filter(r => r[0] && r[0] !== '' && r[0] !== '0')
-      .map(r => ({
-        no: parseInt(r[0]) || 0,
-        date: r[1] || '',
-        time: r[2] || '',
-        recipient: r[3] || '',
-        department: r[4] || '',
-        category: r[5] || '',
-        usdt: parseAmount(r[6]),
-        orderNo: r[7] || '',
+    const rows = await getSheetData('Ads Budget Request sheet', 'A2:N200');
+    // The USDT column (H) sometimes contains a misplaced PHP value (e.g.
+    // "₱15,773.76") on legacy Credit Card Activation rows. Treat any cell
+    // containing "₱" as not-USDT to avoid inflating totals.
+    const parseUsdt = (val) => {
+      if (!val) return 0;
+      const s = String(val);
+      if (s.includes('₱')) return 0;
+      return parseAmount(s);
+    };
+
+    const data = rows
+      .filter(r => (r[0] && r[0].trim()) || (r[6] && r[6].trim()))
+      .map((r, i) => ({
+        no: i + 1,
+        date: r[0] || '',
+        time: '',
+        recipient: (r[1] || '').trim(),
+        department: r[2] || '',
+        category: r[3] || '',
+        description: r[4] || '',
+        releasedBy: r[5] || '',
+        orderNo: r[6] || '',
+        usdt: parseUsdt(r[7]),
         rate: parseAmount(r[8]),
         php: parseAmount(r[9]),
-        rateTime: r[10] || '',
-        payment: r[11] || '',
-        wallet: r[12] || '',
-        network: r[13] || '',
+        dateConsumed: r[10] || '',
+        amountConsumed: parseAmount(r[11]),
+        remainingBalance: parseAmount(r[12]),
+        payment: r[13] || '',
+        wallet: '',
+        network: '',
       }));
 
     // Summary by recipient
@@ -372,11 +389,19 @@ app.get('/api/adsfund', async (req, res) => {
     const totalUsdt = data.reduce((s, r) => s + r.usdt, 0);
     const totalPhp = data.reduce((s, r) => s + r.php, 0);
 
+    // Weighted-by-USDT average rate (only rows with both USDT > 0 and rate > 0).
+    // totalPhp / totalUsdt would skew because some rows are PHP-only.
+    let rateNum = 0, rateDen = 0;
+    data.forEach(r => {
+      if (r.usdt > 0 && r.rate > 0) { rateNum += r.rate * r.usdt; rateDen += r.usdt; }
+    });
+    const avgRate = rateDen > 0 ? rateNum / rateDen : 0;
+
     res.json({
       transfers: data,
       totalUsdt,
       totalPhp,
-      avgRate: totalUsdt > 0 ? totalPhp / totalUsdt : 0,
+      avgRate,
       count: data.length,
       byRecipient,
     });
@@ -497,7 +522,27 @@ app.get('/api/fundflow', async (req, res) => {
 
 // Helpers ---------------------------------------------------------------------
 
-const ALLOWED_PERSONS = new Set(['Jason', 'Jomar', 'Mika', 'Ron', 'Shila']);
+const ALLOWED_PERSONS = new Set(['Jason', 'Jomar', 'Mika', 'Ron', 'Shila', 'Mark', 'John Paul']);
+
+// Authoritative card last-4 -> person. When we insert a card_transactions row,
+// the card number is more reliable than the upload form field (CSVs can overlap
+// transaction_serial values, causing UPSERT to wrongly reassign ownership).
+const CARD_PERSON_MAP = {
+  '3568': 'Ron',
+  '3077': 'Jason',
+  '8888': 'Mika',
+  '7266': 'Shila',
+  '2609': 'Shila',
+  '4592': 'Jomar',
+  '4052': 'John Paul',
+  '9446': 'Mark',
+};
+
+const resolvePersonFromCard = (cardNumber, fallback) => {
+  const s = cardNumber ? String(cardNumber).replace(/[^0-9]/g, '') : '';
+  const last4 = s.length >= 4 ? s.slice(-4) : null;
+  return (last4 && CARD_PERSON_MAP[last4]) || fallback;
+};
 
 const toNum = (v) => {
   if (v === undefined || v === null || v === '') return null;
@@ -560,7 +605,23 @@ app.post('/api/ads/upload', requireDb, upload.single('file'), async (req, res) =
       ) VALUES (
         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17
       )
-      ON CONFLICT (transaction_serial) DO NOTHING
+      ON CONFLICT (transaction_serial) DO UPDATE SET
+        person = EXCLUDED.person,
+        card_id = EXCLUDED.card_id,
+        card_number = EXCLUDED.card_number,
+        original_serial = EXCLUDED.original_serial,
+        transaction_amount = EXCLUDED.transaction_amount,
+        transaction_currency = EXCLUDED.transaction_currency,
+        authorized_amount = EXCLUDED.authorized_amount,
+        authorized_currency = EXCLUDED.authorized_currency,
+        authorization_fee = EXCLUDED.authorization_fee,
+        cross_border_fee = EXCLUDED.cross_border_fee,
+        settlement_amount = EXCLUDED.settlement_amount,
+        merchant_name = EXCLUDED.merchant_name,
+        type = EXCLUDED.type,
+        status = EXCLUDED.status,
+        description = EXCLUDED.description,
+        transaction_time = EXCLUDED.transaction_time
       RETURNING id
     `;
 
@@ -574,8 +635,9 @@ app.post('/api/ads/upload', requireDb, upload.single('file'), async (req, res) =
           continue;
         }
         try {
+          const resolvedPerson = resolvePersonFromCard(r['Card number'], person);
           const result = await client.query(insertSql, [
-            person,
+            resolvedPerson,
             r['Card ID'] || null,
             r['Card number'] || null,
             serial,
@@ -1444,6 +1506,33 @@ app.delete('/api/wallet/transactions/:id', requireDb, async (req, res) => {
 // ===========================================================================
 // CARD LEDGER — unified per-card timeline (wallet loads IN + card spends OUT)
 // ===========================================================================
+
+// POST /api/admin/fix-card-persons — one-shot: reassign person based on CARD_PERSON_MAP
+// Authoritative: card_number.last4 beats whatever person was on the row.
+app.post('/api/admin/fix-card-persons', requireDb, async (req, res) => {
+  try {
+    const results = {};
+    const client = await pgPool.connect();
+    try {
+      for (const [last4, person] of Object.entries(CARD_PERSON_MAP)) {
+        const { rowCount } = await client.query(
+          `UPDATE card_transactions
+             SET person = $1
+           WHERE RIGHT(REGEXP_REPLACE(COALESCE(card_number,''), '[^0-9]', '', 'g'), 4) = $2
+             AND person <> $1`,
+          [person, last4]
+        );
+        if (rowCount > 0) results[`${last4} -> ${person}`] = rowCount;
+      }
+    } finally {
+      client.release();
+    }
+    res.json({ ok: true, reassigned: results });
+  } catch (err) {
+    console.error('[fix-card-persons]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // GET /api/cards — list all cards (union of card_transactions + wallet_transactions)
 app.get('/api/cards', requireDb, async (req, res) => {
