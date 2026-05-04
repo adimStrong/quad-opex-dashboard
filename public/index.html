@@ -192,11 +192,16 @@ tr:hover td{background:rgba(255,255,255,0.04)}
       <div class="kpi-value" id="totalSpent" style="color:#f44336">--</div>
       <div class="kpi-sub" id="spentSub">Pre-Op + Hard Assets + Ads Fund</div>
     </div>
-    <div class="glass kpi">
-      <div class="kpi-icon" style="background:rgba(33,150,243,0.15);color:var(--blue)">&#8369;</div>
-      <div class="kpi-label">Cash Balance</div>
-      <div class="kpi-value" id="cashBalance" style="color:#2196F3">--</div>
-      <div class="kpi-sub">Fund In - Cost</div>
+    <div class="glass kpi" style="display:flex;flex-direction:column;justify-content:center;gap:10px">
+      <div class="kpi-label">Budget Balance</div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px">
+        <div style="font-size:.78rem;color:var(--text-dim)">Hard Asset</div>
+        <div id="balanceHac" style="font-size:1.45rem;font-weight:700;color:#FF9800">--</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px">
+        <div style="font-size:.78rem;color:var(--text-dim)">Ads</div>
+        <div id="balanceAds" style="font-size:1.45rem;font-weight:700;color:#4CAF50">--</div>
+      </div>
     </div>
   </div>
 
@@ -486,13 +491,18 @@ function updateKPIs() {
   const hardTotal = hardData.filter(r => r.total > 0).reduce((s, r) => s + (r.total || 0), 0);
   const adsTotal = adsFundData.totalPhp || 0;
   const totalSpent = preopTotal + hardTotal + adsTotal;
-  const cashBal = totalIn - totalSpent;
   document.getElementById('totalSpent').textContent = fmt(totalSpent);
   document.getElementById('spentSub').textContent = `Pre-Op + Hard Assets + Ads Fund · ${fmtUsd(toUsd(totalSpent))}`;
-  document.getElementById('cashBalance').textContent = fmt(cashBal);
-  // Cash Balance sub already says "Fund In - Cost"; enrich it
-  const cbSub = document.querySelector('#cashBalance + .kpi-sub');
-  if (cbSub) cbSub.textContent = `Fund In − Cost · ${fmtUsd(toUsd(cashBal))}`;
+
+  // Budget balances (replaces old cash balance)
+  const hacBal = BUDGET_HARD_ASSET - (preopTotal + hardTotal);
+  const adsBal = BUDGET_ADS - adsTotal;
+  const hacEl = document.getElementById('balanceHac');
+  const adsEl = document.getElementById('balanceAds');
+  hacEl.textContent = fmt(hacBal);
+  hacEl.style.color = hacBal >= 0 ? '#FF9800' : '#f44336';
+  adsEl.textContent = fmt(adsBal);
+  adsEl.style.color = adsBal >= 0 ? '#4CAF50' : '#f44336';
 
   // Cost breakdown cards
   document.getElementById('dsPreop').textContent = fmt(preopTotal);
