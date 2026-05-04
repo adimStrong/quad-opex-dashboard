@@ -178,87 +178,93 @@ tr:hover td{background:rgba(255,255,255,0.04)}
   <!-- FUND IN vs COST (Combined Overview)  -->
   <!-- ══════════════════════════════════════ -->
 
-  <!-- Top KPIs: Fund In | Cost | Balance -->
+  <!-- Top KPIs: Total Budget | Total Spent | Total Remaining -->
   <div class="grid-3" style="margin-bottom:20px">
     <div class="glass kpi">
-      <div class="kpi-icon" style="background:rgba(76,175,80,0.15);color:var(--green)">&#9650;</div>
-      <div class="kpi-label">Fund In</div>
-      <div class="kpi-value" id="totalFundsIn" style="color:#4CAF50">--</div>
-      <div class="kpi-sub" id="fundsInCount">-- remittances</div>
+      <div class="kpi-icon" style="background:rgba(124,77,255,0.15);color:#7c4dff">&#9670;</div>
+      <div class="kpi-label">Total Budget</div>
+      <div class="kpi-value" id="totalBudget" style="color:#7c4dff">--</div>
+      <div class="kpi-sub" id="totalBudgetSub">Hard Asset + Ads</div>
     </div>
     <div class="glass kpi">
       <div class="kpi-icon" style="background:rgba(244,67,54,0.15);color:var(--red)">&#9660;</div>
-      <div class="kpi-label">Total Cost</div>
+      <div class="kpi-label">Total Spent</div>
       <div class="kpi-value" id="totalSpent" style="color:#f44336">--</div>
-      <div class="kpi-sub" id="spentSub">Pre-Op + Hard Assets + Ads Fund</div>
+      <div class="kpi-sub" id="spentSub">-- of -- budget</div>
     </div>
-    <div class="glass kpi" style="display:flex;flex-direction:column;justify-content:center;gap:10px">
-      <div class="kpi-label">Budget Balance</div>
-      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px">
-        <div style="font-size:.78rem;color:var(--text-dim)">Hard Asset</div>
-        <div id="balanceHac" style="font-size:1.45rem;font-weight:700;color:#FF9800">--</div>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px">
-        <div style="font-size:.78rem;color:var(--text-dim)">Ads</div>
-        <div id="balanceAds" style="font-size:1.45rem;font-weight:700;color:#4CAF50">--</div>
-      </div>
+    <div class="glass kpi">
+      <div class="kpi-icon" style="background:rgba(76,175,80,0.15);color:var(--green)">&#8369;</div>
+      <div class="kpi-label">Total Remaining</div>
+      <div class="kpi-value" id="totalRemaining" style="color:#4CAF50">--</div>
+      <div class="kpi-sub" id="remainingSub">-- % left</div>
     </div>
   </div>
 
-  <!-- Second Row: Cost Breakdown -->
-  <div class="grid-3" style="margin-bottom:20px">
-    <div class="glass kpi">
-      <div class="kpi-icon" style="background:rgba(33,150,243,0.15);color:var(--blue)">&#9670;</div>
-      <div class="kpi-label">Pre-Operation</div>
-      <div class="kpi-value" id="dsPreop">--</div>
-      <div class="kpi-sub" id="dsPreopCount">-- items</div>
-    </div>
-    <div class="glass kpi">
-      <div class="kpi-icon" style="background:rgba(255,152,0,0.15);color:var(--orange)">&#9646;</div>
-      <div class="kpi-label">Hard Assets</div>
-      <div class="kpi-value" id="dsHard">--</div>
-      <div class="kpi-sub" id="dsHardCount">-- items</div>
-    </div>
-    <div class="glass kpi">
-      <div class="kpi-icon" style="background:rgba(156,39,176,0.15);color:var(--purple)">&#8383;</div>
-      <div class="kpi-label">Ads Fund</div>
-      <div class="kpi-value" id="dsAds">--</div>
-      <div class="kpi-sub" id="dsAdsCount">-- requests</div>
-      <div id="adsBudgetSub" style="margin-top:6px;font-size:.72rem;font-weight:600">--</div>
-    </div>
-  </div>
-
-  <!-- Hard Asset Cost summary (Pre-Op + Hard Assets vs budget) -->
-  <div class="glass kpi" id="hardAssetCostCard" style="margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;padding:20px 24px">
-    <div>
-      <div class="kpi-label">Hard Asset Cost <span style="font-weight:400;color:var(--text-dim);font-size:.78rem">(Pre-Op + Hard Assets)</span></div>
-      <div class="kpi-value" id="hacSpent" style="color:#FF9800">--</div>
-      <div class="kpi-sub" id="hacSub">-- of -- budget</div>
-    </div>
-    <div style="flex:1;min-width:240px;max-width:480px">
-      <div id="hacBar" style="height:14px;background:rgba(255,255,255,0.08);border-radius:7px;overflow:hidden">
+  <!-- Envelope Cards: Hard Asset Cost vs Ads Fund -->
+  <div class="grid-2" style="margin-bottom:20px">
+    <div class="glass kpi" id="envHac" style="padding:20px 24px">
+      <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px">
+        <div>
+          <div class="kpi-label">Hard Asset Cost <span style="font-weight:400;color:var(--text-dim);font-size:.72rem">(Pre-Op + Hard Assets)</span></div>
+          <div class="kpi-value" id="hacSpent" style="color:#FF9800">--</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:.72rem;color:var(--text-dim)">budget</div>
+          <div id="hacBudget" style="font-size:1rem;font-weight:600">--</div>
+        </div>
+      </div>
+      <div style="height:14px;background:rgba(255,255,255,0.08);border-radius:7px;overflow:hidden">
         <div id="hacFill" style="height:100%;width:0%;background:linear-gradient(90deg,#FF9800,#FFC107);border-radius:7px;transition:width .4s"></div>
       </div>
-      <div id="hacRem" style="margin-top:8px;font-size:.78rem;color:var(--text-dim);text-align:right">remaining: --</div>
+      <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:.78rem;color:var(--text-dim)">
+        <span id="hacPctLabel">-- % used</span>
+        <span id="hacRem">remaining: --</span>
+      </div>
+      <div id="hacBreakdown" style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);font-size:.72rem;color:var(--text-dim);display:flex;justify-content:space-between;gap:12px">
+        <span>Pre-Op: <span id="hacPreop" style="color:#2196F3;font-weight:600">--</span></span>
+        <span>Hard Assets: <span id="hacHard" style="color:#FF9800;font-weight:600">--</span></span>
+      </div>
+    </div>
+    <div class="glass kpi" id="envAds" style="padding:20px 24px">
+      <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px">
+        <div>
+          <div class="kpi-label">Ads Fund</div>
+          <div class="kpi-value" id="dsAds" style="color:#9C27B0">--</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:.72rem;color:var(--text-dim)">budget</div>
+          <div id="adsBudget" style="font-size:1rem;font-weight:600">--</div>
+        </div>
+      </div>
+      <div style="height:14px;background:rgba(255,255,255,0.08);border-radius:7px;overflow:hidden">
+        <div id="adsFill" style="height:100%;width:0%;background:linear-gradient(90deg,#9C27B0,#E91E63);border-radius:7px;transition:width .4s"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:.78rem;color:var(--text-dim)">
+        <span id="adsPctLabel">-- % used</span>
+        <span id="adsRem">remaining: --</span>
+      </div>
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);font-size:.72rem;color:var(--text-dim)">
+        <span id="dsAdsCount">-- requests</span>
+      </div>
     </div>
   </div>
 
-  <!-- Charts Row 1: Waterfall + Fund In vs Cost Side by Side -->
+  <!-- Charts Row 1: Budget Burndown + Allocation -->
   <div class="grid-2" style="margin-bottom:20px">
     <div class="glass chart-card">
-      <h3>Fund In vs Cost vs Remaining</h3>
+      <h3>Budget vs Spent</h3>
       <div class="chart-wrap" style="min-height:300px"><canvas id="chartDsWaterfall"></canvas></div>
     </div>
     <div class="glass chart-card">
-      <h3>Where the Money Goes</h3>
+      <h3>Spend Allocation</h3>
       <div class="chart-wrap" style="max-width:340px;margin:0 auto"><canvas id="chartDsCategory"></canvas></div>
     </div>
   </div>
 
-  <!-- Charts Row 2: Fund In vs Cost by Day + Site Funding -->
+  <!-- Charts Row 2: Cumulative Spend vs Budget + Site Funding -->
   <div class="grid-2" style="margin-bottom:20px">
     <div class="glass chart-card">
-      <h3>Daily: Fund In vs Cost</h3>
+      <h3>Cumulative Spend vs Budget</h3>
       <div class="chart-wrap" style="min-height:320px"><canvas id="chartDsTrend"></canvas></div>
     </div>
     <div class="glass chart-card">
@@ -282,15 +288,36 @@ tr:hover td{background:rgba(255,255,255,0.04)}
     <table id="dsTable">
       <thead><tr>
         <th>Date</th>
-        <th style="text-align:right;color:#4CAF50">Fund In</th>
-        <th style="text-align:right;color:#2196F3">Pre-Op</th>
-        <th style="text-align:right;color:#FF9800">Hard Assets</th>
+        <th style="text-align:right;color:#FF9800">Hard Asset Cost</th>
         <th style="text-align:right;color:#9C27B0">Ads Fund</th>
-        <th style="text-align:right;color:#f44336">Daily Cost</th>
-        <th style="text-align:right">Balance</th>
+        <th style="text-align:right;color:#f44336">Daily Total</th>
+        <th style="text-align:right">Cumulative</th>
       </tr></thead>
       <tbody id="dsBody"></tbody>
     </table>
+  </div>
+
+  <!-- Fund In summary (remittance) -->
+  <div class="section-title">Fund In</div>
+  <div class="grid-3" style="margin-bottom:20px">
+    <div class="glass kpi">
+      <div class="kpi-icon" style="background:rgba(76,175,80,0.15);color:var(--green)">&#9650;</div>
+      <div class="kpi-label">Total Fund In</div>
+      <div class="kpi-value" id="totalFundsIn" style="color:#4CAF50">--</div>
+      <div class="kpi-sub" id="fundsInCount">-- remittances</div>
+    </div>
+    <div class="glass kpi">
+      <div class="kpi-icon" style="background:rgba(124,77,255,0.15);color:#7c4dff">&#9633;</div>
+      <div class="kpi-label">Fund In vs Total Spent</div>
+      <div class="kpi-value" id="fundCoverage" style="color:#7c4dff">--</div>
+      <div class="kpi-sub" id="fundCoverageSub">-- % of spend covered</div>
+    </div>
+    <div class="glass kpi">
+      <div class="kpi-icon" style="background:rgba(33,150,243,0.15);color:var(--blue)">&#8369;</div>
+      <div class="kpi-label">Cash Position</div>
+      <div class="kpi-value" id="cashBalance" style="color:#2196F3">--</div>
+      <div class="kpi-sub">Fund In − Total Spent</div>
+    </div>
   </div>
 
   <!-- Ledger Table -->
@@ -477,67 +504,82 @@ function updateAll() {
 // ── KPIs ──
 function updateKPIs() {
   const d = fundFlowData;
-  // Reference PHP→USD conversion: use avg rate from actual ads transfers; fallback 59.90
   const rate = (adsFundData && adsFundData.avgRate) || 59.90;
   const toUsd = php => (Number(php) || 0) / rate;
   const fmtUsd = v => '$' + (Number(v) || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
-  const totalIn = d.totalRemittance || 0;
-  document.getElementById('totalFundsIn').textContent = fmt(totalIn);
-  const creditCount = ledgerData.filter(r => r.type === 'CREDIT').length;
-  document.getElementById('fundsInCount').textContent = `${fmtCount(creditCount)} remittances · ${fmtUsd(toUsd(totalIn))}`;
-
   const preopTotal = preopData.reduce((s, r) => s + (r.total || 0), 0);
-  const hardTotal = hardData.filter(r => r.total > 0).reduce((s, r) => s + (r.total || 0), 0);
-  const adsTotal = adsFundData.totalPhp || 0;
-  const totalSpent = preopTotal + hardTotal + adsTotal;
-  document.getElementById('totalSpent').textContent = fmt(totalSpent);
-  document.getElementById('spentSub').textContent = `Pre-Op + Hard Assets + Ads Fund · ${fmtUsd(toUsd(totalSpent))}`;
+  const hardTotal  = hardData.filter(r => r.total > 0).reduce((s, r) => s + (r.total || 0), 0);
+  const adsTotal   = adsFundData.totalPhp || 0;
+  const hacSpent   = preopTotal + hardTotal;
+  const totalSpent = hacSpent + adsTotal;
+  const totalBudget    = BUDGET_HARD_ASSET + BUDGET_ADS;
+  const totalRemaining = totalBudget - totalSpent;
+  const totalPct       = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
 
-  // Budget balances (replaces old cash balance)
-  const hacBal = BUDGET_HARD_ASSET - (preopTotal + hardTotal);
-  const adsBal = BUDGET_ADS - adsTotal;
-  const hacEl = document.getElementById('balanceHac');
-  const adsEl = document.getElementById('balanceAds');
-  hacEl.textContent = fmt(hacBal);
-  hacEl.style.color = hacBal >= 0 ? '#FF9800' : '#f44336';
-  adsEl.textContent = fmt(adsBal);
-  adsEl.style.color = adsBal >= 0 ? '#4CAF50' : '#f44336';
+  // Top KPI row — Budget / Spent / Remaining
+  document.getElementById('totalBudget').textContent  = fmt(totalBudget);
+  document.getElementById('totalBudgetSub').textContent =
+    `Hard Asset ${fmt(BUDGET_HARD_ASSET)} · Ads ${fmt(BUDGET_ADS)}`;
+  document.getElementById('totalSpent').textContent   = fmt(totalSpent);
+  document.getElementById('spentSub').textContent     =
+    `${totalPct.toFixed(1)}% of ${fmt(totalBudget)} budget · ${fmtUsd(toUsd(totalSpent))}`;
+  document.getElementById('totalRemaining').textContent = fmt(totalRemaining);
+  document.getElementById('totalRemaining').style.color = totalRemaining >= 0 ? '#4CAF50' : '#f44336';
+  document.getElementById('remainingSub').textContent   = totalRemaining >= 0
+    ? `${(100 - totalPct).toFixed(1)}% of budget left · ${fmtUsd(toUsd(totalRemaining))}`
+    : `OVER BUDGET by ${fmt(-totalRemaining)}`;
 
-  // Cost breakdown cards
-  document.getElementById('dsPreop').textContent = fmt(preopTotal);
-  document.getElementById('dsPreopCount').textContent = `${fmtCount(preopData.length)} items · ${fmtUsd(toUsd(preopTotal))}`;
-  document.getElementById('dsHard').textContent = fmt(hardTotal);
-  document.getElementById('dsHardCount').textContent = `${fmtCount(hardData.filter(r => r.total > 0).length)} items · ${fmtUsd(toUsd(hardTotal))}`;
-  document.getElementById('dsAds').textContent = fmt(adsTotal);
-  document.getElementById('dsAdsCount').textContent = `${fmtCount((adsFundData.transfers || []).length)} requests · ${fmtUsd(adsFundData.totalUsdt || 0)} USDT`;
-
-  // Hard Asset Cost (Pre-Op + Hard Assets) vs budget
-  const hacSpent = preopTotal + hardTotal;
-  const hacRem   = BUDGET_HARD_ASSET - hacSpent;
-  const hacPct   = Math.min(100, (hacSpent / BUDGET_HARD_ASSET) * 100);
-  document.getElementById('hacSpent').textContent = fmt(hacSpent);
-  document.getElementById('hacSub').textContent   =
-    `${fmt(hacSpent)} of ${fmt(BUDGET_HARD_ASSET)} budget · ${hacPct.toFixed(1)}% used`;
-  document.getElementById('hacFill').style.width  = hacPct + '%';
-  document.getElementById('hacRem').textContent   = hacRem >= 0
-    ? `remaining: ${fmt(hacRem)}`
-    : `OVER by ${fmt(-hacRem)}`;
+  // Envelope card — Hard Asset Cost
+  const hacRem = BUDGET_HARD_ASSET - hacSpent;
+  const hacPct = Math.min(100, (hacSpent / BUDGET_HARD_ASSET) * 100);
+  document.getElementById('hacSpent').textContent   = fmt(hacSpent);
+  document.getElementById('hacBudget').textContent  = fmt(BUDGET_HARD_ASSET);
+  document.getElementById('hacFill').style.width    = hacPct + '%';
   document.getElementById('hacFill').style.background = hacRem >= 0
     ? 'linear-gradient(90deg,#FF9800,#FFC107)'
     : 'linear-gradient(90deg,#f44336,#ff5252)';
+  document.getElementById('hacPctLabel').textContent = `${hacPct.toFixed(1)}% used`;
+  document.getElementById('hacRem').textContent      = hacRem >= 0
+    ? `remaining: ${fmt(hacRem)}`
+    : `OVER by ${fmt(-hacRem)}`;
+  document.getElementById('hacRem').style.color      = hacRem >= 0 ? 'var(--text-dim)' : '#f44336';
+  document.getElementById('hacPreop').textContent    = fmt(preopTotal);
+  document.getElementById('hacHard').textContent     = fmt(hardTotal);
 
-  // Ads budget vs spent
+  // Envelope card — Ads Fund
   const adsRem = BUDGET_ADS - adsTotal;
   const adsPct = Math.min(100, (adsTotal / BUDGET_ADS) * 100);
-  const adsBudgetSub = document.getElementById('adsBudgetSub');
-  if (adsRem >= 0) {
-    adsBudgetSub.style.color = '#4CAF50';
-    adsBudgetSub.textContent = `${fmt(adsRem)} remaining of ${fmt(BUDGET_ADS)} budget · ${adsPct.toFixed(1)}% used`;
-  } else {
-    adsBudgetSub.style.color = '#f44336';
-    adsBudgetSub.textContent = `OVER BUDGET by ${fmt(-adsRem)} · cap was ${fmt(BUDGET_ADS)}`;
-  }
+  document.getElementById('dsAds').textContent      = fmt(adsTotal);
+  document.getElementById('adsBudget').textContent  = fmt(BUDGET_ADS);
+  document.getElementById('adsFill').style.width    = adsPct + '%';
+  document.getElementById('adsFill').style.background = adsRem >= 0
+    ? 'linear-gradient(90deg,#9C27B0,#E91E63)'
+    : 'linear-gradient(90deg,#f44336,#ff5252)';
+  document.getElementById('adsPctLabel').textContent = `${adsPct.toFixed(1)}% used`;
+  document.getElementById('adsRem').textContent      = adsRem >= 0
+    ? `remaining: ${fmt(adsRem)}`
+    : `OVER by ${fmt(-adsRem)}`;
+  document.getElementById('adsRem').style.color      = adsRem >= 0 ? 'var(--text-dim)' : '#f44336';
+  document.getElementById('dsAdsCount').textContent  =
+    `${fmtCount((adsFundData.transfers || []).length)} requests · ${fmtUsd(adsFundData.totalUsdt || 0)} USDT`;
+
+  // Fund In / cash position section (below tables)
+  const totalIn = d.totalRemittance || 0;
+  document.getElementById('totalFundsIn').textContent = fmt(totalIn);
+  const creditCount = ledgerData.filter(r => r.type === 'CREDIT').length;
+  document.getElementById('fundsInCount').textContent =
+    `${fmtCount(creditCount)} remittances · ${fmtUsd(toUsd(totalIn))}`;
+  const coverPct = totalSpent > 0 ? (totalIn / totalSpent) * 100 : 0;
+  document.getElementById('fundCoverage').textContent    = `${coverPct.toFixed(0)}%`;
+  document.getElementById('fundCoverage').style.color    = coverPct >= 100 ? '#4CAF50' : '#FF9800';
+  document.getElementById('fundCoverageSub').textContent =
+    coverPct >= 100
+      ? `Fund In covers all spend · surplus ${fmt(totalIn - totalSpent)}`
+      : `Funded ${fmt(totalIn)} of ${fmt(totalSpent)} spent`;
+  const cashBal = totalIn - totalSpent;
+  document.getElementById('cashBalance').textContent     = fmt(cashBal);
+  document.getElementById('cashBalance').style.color     = cashBal >= 0 ? '#2196F3' : '#f44336';
 }
 
 // ── Site Cards ──
@@ -856,30 +898,19 @@ function updateDailySpend() {
   const days = Object.keys(dailyMap).sort();
   if (!days.length) return;
 
-  // Totals
   let totalPreop = 0, totalHard = 0, totalAds = 0;
-  let peakDay = '', peakAmt = 0;
   days.forEach(d => {
     const v = dailyMap[d];
-    totalPreop += v.preop;
-    totalHard += v.hard;
-    totalAds += v.ads;
-    const dayTotal = v.preop + v.hard + v.ads;
-    if (dayTotal > peakAmt) { peakAmt = dayTotal; peakDay = d; }
+    totalPreop += v.preop; totalHard += v.hard; totalAds += v.ads;
   });
-  const grandTotal = totalPreop + totalHard + totalAds;
-  const avgDaily = grandTotal / days.length;
-  const calendarDays = Math.max(1, (new Date(days[days.length - 1]) - new Date(days[0])) / 86400000 + 1);
-  const burnRate = grandTotal / calendarDays;
+  const totalHac = totalPreop + totalHard;
 
-  // KPIs computed but no dedicated elements needed (values shown in top row)
-
-  // Chart: Spend by Category (Doughnut)
+  // ── Chart 1: Spend Allocation (donut, 2 envelopes)
   renderChart('chartDsCategory', {
     type: 'doughnut',
     data: {
-      labels: ['Pre-Operation', 'Hard Assets', 'Ads Fund'],
-      datasets: [{ data: [totalPreop, totalHard, totalAds], backgroundColor: ['#2196F3', '#FF9800', '#9C27B0'], borderWidth: 0, hoverOffset: 8 }]
+      labels: ['Hard Asset Cost', 'Ads Fund'],
+      datasets: [{ data: [totalHac, totalAds], backgroundColor: ['#FF9800', '#9C27B0'], borderWidth: 0, hoverOffset: 8 }]
     },
     options: {
       responsive: true, maintainAspectRatio: false, cutout: '62%',
@@ -891,92 +922,85 @@ function updateDailySpend() {
     plugins: [ChartDataLabels]
   });
 
-  // Chart: Daily Fund In vs Cost
-  // Merge fund flow daily data with cost daily data
-  const allDates = new Set([...days]);
-  const fundDaily = fundFlowData.daily || [];
-  fundDaily.forEach(d => { if (d.in > 0) allDates.add(d.date); });
-  const allDatesSorted = [...allDates].sort();
-
-  const fundInByDate = {};
-  fundDaily.forEach(d => { fundInByDate[d.date] = d.in; });
-
-  const dateLabels = allDatesSorted.map(d => { const p = d.split('-'); return p[1] + '/' + p[2]; });
-  const fundInArr = allDatesSorted.map(d => fundInByDate[d] || 0);
-  const costArr = allDatesSorted.map(d => {
+  // ── Chart 2: Cumulative Spend vs Budget (line w/ ceiling lines)
+  const dateLabels = days.map(d => { const p = d.split('-'); return p[1] + '/' + p[2]; });
+  let cumHac = 0, cumAds = 0;
+  const cumHacArr = [], cumAdsArr = [];
+  days.forEach(d => {
     const v = dailyMap[d];
-    return v ? v.preop + v.hard + v.ads : 0;
+    cumHac += v.preop + v.hard;
+    cumAds += v.ads;
+    cumHacArr.push(cumHac);
+    cumAdsArr.push(cumAds);
   });
-  let balanceArr = [], bal = 0;
-  allDatesSorted.forEach((d, i) => {
-    bal += (fundInArr[i] || 0) - (costArr[i] || 0);
-    balanceArr.push(bal);
-  });
+  const hacBudgetLine = days.map(() => BUDGET_HARD_ASSET);
+  const adsBudgetLine = days.map(() => BUDGET_ADS);
 
   renderChart('chartDsTrend', {
-    type: 'bar',
+    type: 'line',
     data: {
       labels: dateLabels,
       datasets: [
-        { label: 'Fund In', data: fundInArr, backgroundColor: 'rgba(76,175,80,0.7)', borderRadius: 4, order: 2 },
-        { label: 'Cost', data: costArr, backgroundColor: 'rgba(244,67,54,0.7)', borderRadius: 4, order: 2 },
-        { label: 'Balance', data: balanceArr, type: 'line', borderColor: '#7c4dff', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#7c4dff', tension: 0.3, yAxisID: 'y1', order: 1 }
+        { label: 'Hard Asset Cost (cum.)', data: cumHacArr, borderColor: '#FF9800', backgroundColor: 'rgba(255,152,0,0.1)', borderWidth: 2.5, pointRadius: 2, tension: 0.25, fill: true },
+        { label: 'Hard Asset Budget',      data: hacBudgetLine, borderColor: '#FF9800', borderWidth: 1.5, borderDash: [5, 4], pointRadius: 0, fill: false },
+        { label: 'Ads Fund (cum.)',        data: cumAdsArr, borderColor: '#9C27B0', backgroundColor: 'rgba(156,39,176,0.1)', borderWidth: 2.5, pointRadius: 2, tension: 0.25, fill: true },
+        { label: 'Ads Budget',             data: adsBudgetLine, borderColor: '#9C27B0', borderWidth: 1.5, borderDash: [5, 4], pointRadius: 0, fill: false }
       ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: 'top', labels: { boxWidth: 12, padding: 12 } }, datalabels: { display: false } },
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } },
+        datalabels: { display: false },
+        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${fmt(ctx.parsed.y)}` } }
+      },
       scales: {
         x: { grid: { display: false }, ticks: { maxRotation: 45, font: { size: 10 } } },
-        y: pesoAxis(),
-        y1: { position: 'right', ...pesoAxis(), grid: { display: false } }
+        y: pesoAxis()
+      }
+    }
+  });
+
+  // ── Chart 3: Budget vs Spent (stacked horizontal bars per envelope)
+  renderChart('chartDsWaterfall', {
+    type: 'bar',
+    data: {
+      labels: ['Hard Asset Cost', 'Ads Fund'],
+      datasets: [
+        { label: 'Spent',     data: [totalHac, totalAds], backgroundColor: ['#FF9800', '#9C27B0'], borderRadius: 4, stack: 'env' },
+        { label: 'Remaining', data: [Math.max(0, BUDGET_HARD_ASSET - totalHac), Math.max(0, BUDGET_ADS - totalAds)], backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 4, stack: 'env' }
+      ]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 12, padding: 8 } },
+        datalabels: {
+          color: '#fff', font: { weight: 600, size: 10 },
+          formatter: (v, ctx) => {
+            if (!v || v <= 0) return '';
+            const total = ctx.dataIndex === 0 ? BUDGET_HARD_ASSET : BUDGET_ADS;
+            const pct = (v / total) * 100;
+            return pct > 6 ? fmtShort(v) : '';
+          }
+        },
+        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${fmt(ctx.parsed.x)}` } }
+      },
+      scales: {
+        x: { stacked: true, ...pesoAxis() },
+        y: { stacked: true, grid: { display: false } }
       }
     },
     plugins: [ChartDataLabels]
   });
 
-  // Chart: Waterfall (Funds In → Spent → Remaining)
-  const fundsIn = fundFlowData.totalRemittance || 0;
-  const cashBal = fundsIn - grandTotal;
-  renderChart('chartDsWaterfall', {
-    type: 'bar',
-    data: {
-      labels: ['Funds In', 'Pre-Op', 'Hard Assets', 'Ads Fund', 'Cash Balance'],
-      datasets: [{
-        data: [
-          [0, fundsIn],
-          [fundsIn, fundsIn - totalPreop],
-          [fundsIn - totalPreop, fundsIn - totalPreop - totalHard],
-          [fundsIn - totalPreop - totalHard, cashBal],
-          [0, cashBal]
-        ],
-        backgroundColor: ['rgba(76,175,80,0.7)', 'rgba(33,150,243,0.7)', 'rgba(255,152,0,0.7)', 'rgba(156,39,176,0.7)', 'rgba(33,150,243,0.4)'],
-        borderColor: ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#2196F3'],
-        borderWidth: 1, borderRadius: 4, barPercentage: 0.6
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        datalabels: {
-          color: '#fff', font: { weight: 600, size: 10 },
-          formatter: (v) => { const amt = Array.isArray(v) ? Math.abs(v[1] - v[0]) : v; return amt > 0 ? fmtShort(amt) : ''; },
-          anchor: 'center'
-        }
-      },
-      scales: { y: pesoAxis(), x: { grid: { display: false } } }
-    },
-    plugins: [ChartDataLabels]
-  });
-
-  // Chart: Monthly Summary
+  // ── Chart 4: Monthly Summary (2 envelopes + budget overlay)
   const months = {};
   days.forEach(d => {
-    const m = d.slice(0, 7); // YYYY-MM
-    if (!months[m]) months[m] = { preop: 0, hard: 0, ads: 0 };
-    months[m].preop += dailyMap[d].preop;
-    months[m].hard += dailyMap[d].hard;
+    const m = d.slice(0, 7);
+    if (!months[m]) months[m] = { hac: 0, ads: 0 };
+    months[m].hac += dailyMap[d].preop + dailyMap[d].hard;
     months[m].ads += dailyMap[d].ads;
   });
   const monthKeys = Object.keys(months).sort();
@@ -990,9 +1014,8 @@ function updateDailySpend() {
       data: {
         labels: monthKeys,
         datasets: [
-          { label: 'Pre-Op', data: monthKeys.map(m => months[m].preop), backgroundColor: '#2196F3', borderRadius: 4 },
-          { label: 'Hard Assets', data: monthKeys.map(m => months[m].hard), backgroundColor: '#FF9800', borderRadius: 4 },
-          { label: 'Ads Fund', data: monthKeys.map(m => months[m].ads), backgroundColor: '#9C27B0', borderRadius: 4 }
+          { label: 'Hard Asset Cost', data: monthKeys.map(m => months[m].hac), backgroundColor: '#FF9800', borderRadius: 4 },
+          { label: 'Ads Fund',        data: monthKeys.map(m => months[m].ads), backgroundColor: '#9C27B0', borderRadius: 4 }
         ]
       },
       options: {
@@ -1004,35 +1027,27 @@ function updateDailySpend() {
     });
   }
 
-  // Table: Fund In vs Cost daily
-  let tableBal = 0;
-  let totalFundInTable = 0;
-  let html = allDatesSorted.map((d, i) => {
-    const v = dailyMap[d] || { preop: 0, hard: 0, ads: 0 };
-    const fundIn = fundInByDate[d] || 0;
-    const dayCost = v.preop + v.hard + v.ads;
-    tableBal += fundIn - dayCost;
-    totalFundInTable += fundIn;
-    const hasActivity = fundIn > 0 || dayCost > 0;
-    if (!hasActivity) return '';
+  // ── Table: Daily Spend Breakdown (Hard Asset Cost / Ads / Daily / Cumulative)
+  let cumulative = 0;
+  let html = days.map(d => {
+    const v = dailyMap[d];
+    const hac = v.preop + v.hard;
+    const dayTotal = hac + v.ads;
+    cumulative += dayTotal;
     return `<tr>
       <td>${formatDateDisplay(d)}</td>
-      <td style="text-align:right;color:#4CAF50;font-weight:${fundIn > 0 ? '600' : '400'}">${fundIn > 0 ? fmt(fundIn) : '-'}</td>
-      <td style="text-align:right">${v.preop > 0 ? fmt(v.preop) : '-'}</td>
-      <td style="text-align:right">${v.hard > 0 ? fmt(v.hard) : '-'}</td>
+      <td style="text-align:right">${hac > 0 ? fmt(hac) : '-'}</td>
       <td style="text-align:right">${v.ads > 0 ? fmt(v.ads) : '-'}</td>
-      <td style="text-align:right;color:#f44336;font-weight:600">${dayCost > 0 ? fmt(dayCost) : '-'}</td>
-      <td style="text-align:right;color:${tableBal >= 0 ? '#4CAF50' : '#f44336'};font-weight:600">${fmt(tableBal)}</td>
+      <td style="text-align:right;color:#f44336;font-weight:600">${dayTotal > 0 ? fmt(dayTotal) : '-'}</td>
+      <td style="text-align:right;font-weight:600">${fmt(cumulative)}</td>
     </tr>`;
-  }).filter(r => r).join('');
+  }).join('');
   html += `<tr class="daily-total-row">
     <td style="font-weight:700">TOTAL</td>
-    <td style="text-align:right;color:#4CAF50">${fmt(totalFundInTable)}</td>
-    <td style="text-align:right">${fmt(totalPreop)}</td>
-    <td style="text-align:right">${fmt(totalHard)}</td>
-    <td style="text-align:right">${fmt(totalAds)}</td>
-    <td style="text-align:right;color:#f44336">${fmt(grandTotal)}</td>
-    <td style="text-align:right;color:${tableBal >= 0 ? '#4CAF50' : '#f44336'}">${fmt(tableBal)}</td>
+    <td style="text-align:right;color:#FF9800">${fmt(totalHac)}</td>
+    <td style="text-align:right;color:#9C27B0">${fmt(totalAds)}</td>
+    <td style="text-align:right;color:#f44336">${fmt(totalHac + totalAds)}</td>
+    <td style="text-align:right">${fmt(cumulative)}</td>
   </tr>`;
   document.getElementById('dsBody').innerHTML = html;
 }
