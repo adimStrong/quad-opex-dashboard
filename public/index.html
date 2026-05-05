@@ -756,17 +756,34 @@ function updateHard() {
 }
 
 // ── Date Helper ──
+// Repairs two known typos in the OPEX Ads Budget Request sheet:
+//   '05/052026'   → '2026-05-05' (missing slash)
+//   '05/02/0206'  → '2026-05-02' (year typo — bogus year < 2000 → current PH year)
 function normalizeDate(d) {
   if (!d) return null;
-  const s = String(d).trim();
+  let s = String(d).trim();
   // Try ISO: 2026-04-01
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
-  // Try M/D/YYYY or MM/DD/YYYY
-  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (m) return m[3] + '-' + m[1].padStart(2, '0') + '-' + m[2].padStart(2, '0');
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+    const isoYear = parseInt(s.slice(0, 4), 10);
+    if (isoYear >= 2000) return s.slice(0, 10);
+  }
+  // Repair missing-slash: MM/DDYYYY → MM/DD/YYYY
+  const noSlash = s.match(/^(\d{1,2})\/(\d{2})(\d{4})$/);
+  if (noSlash) s = noSlash[1] + '/' + noSlash[2] + '/' + noSlash[3];
+  // Try M/D/YYYY (or M/D/YY etc)
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d+)$/);
+  if (m) {
+    let yy = parseInt(m[3], 10);
+    if (yy < 2000) {
+      // Bogus year — use current PH year (UTC+8)
+      const phNow = new Date(Date.now() + 8 * 3600 * 1000);
+      yy = phNow.getUTCFullYear();
+    }
+    return String(yy).padStart(4, '0') + '-' + m[1].padStart(2, '0') + '-' + m[2].padStart(2, '0');
+  }
   // Fallback
   const dt = new Date(s);
-  if (!isNaN(dt.getTime())) return dt.toISOString().slice(0, 10);
+  if (!isNaN(dt.getTime()) && dt.getUTCFullYear() >= 2000) return dt.toISOString().slice(0, 10);
   return null;
 }
 function formatDateDisplay(d) {
