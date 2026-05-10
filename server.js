@@ -76,6 +76,19 @@ async function initAdsSchema() {
     CREATE INDEX IF NOT EXISTS idx_wallet_tx_direction ON wallet_transactions(direction);
     CREATE INDEX IF NOT EXISTS idx_wallet_tx_btype     ON wallet_transactions(business_type);
     CREATE INDEX IF NOT EXISTS idx_wallet_tx_time      ON wallet_transactions(transaction_time);
+
+    -- Drive sync: track which Drive file each row was imported from
+    ALTER TABLE card_transactions   ADD COLUMN IF NOT EXISTS drive_file_id VARCHAR(100);
+    ALTER TABLE wallet_transactions ADD COLUMN IF NOT EXISTS drive_file_id VARCHAR(100);
+    CREATE TABLE IF NOT EXISTS drive_imports (
+      id              SERIAL PRIMARY KEY,
+      drive_file_id   VARCHAR(100) UNIQUE NOT NULL,
+      file_name       VARCHAR(200),
+      format          VARCHAR(20),
+      rows_parsed     INTEGER,
+      rows_inserted   INTEGER,
+      imported_at     TIMESTAMP DEFAULT NOW()
+    );
   `;
   try {
     await pgPool.query(sql);
@@ -107,10 +120,16 @@ function getAuth() {
   const creds = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT || '{}');
   auth = new google.auth.GoogleAuth({
     credentials: creds,
-    scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+    scopes: [
+      'https://www.googleapis.com/auth/spreadsheets.readonly',
+      'https://www.googleapis.com/auth/drive.readonly',
+    ],
   });
   return auth;
 }
+
+// Drive folder for auto-imported card/wallet CSVs
+const DRIVE_CSV_FOLDER_ID = process.env.DRIVE_CSV_FOLDER_ID || '1YDCKA98uiwE-EJRAGuhC_7Ae2C2CkZ32';
 
 async function getSheetData(sheetName, range) {
   const authClient = await getAuth().getClient();
@@ -673,6 +692,323 @@ app.post('/api/ads/upload', requireDb, upload.single('file'), async (req, res) =
   }
 });
 
+// ── Drive sync helpers ──────────────────────────────────────────────────────
+// Source of truth for unmapped cards: import as person="undefined" rather than
+// guessing or assigning to the form's "person" field.
+const DRIVE_CARD_PERSON_MAP = {
+  '3568': 'Ron',
+  '3077': 'Jason',
+  '8888': 'Mika',
+  '7266': 'Shila',
+  '4592': 'Jomar',
+  '4052': 'John Paul',
+  '9446': 'Mark',
+};
+const UNDEFINED_PERSON = 'undefined';
+
+async function listDriveCsvs(folderId) {
+  const authClient = await getAuth().getClient();
+  const drive = google.drive({ version: 'v3', auth: authClient });
+  const res = await drive.files.list({
+    q: `'${folderId}' in parents and trashed=false and mimeType='text/csv'`,
+    fields: 'files(id,name,size,modifiedTime)',
+    pageSize: 500,
+    orderBy: 'modifiedTime',
+    includeItemsFromAllDrives: true,
+    supportsAllDrives: true,
+  });
+  return res.data.files || [];
+}
+
+async function downloadDriveFile(fileId) {
+  const authClient = await getAuth().getClient();
+  const drive = google.drive({ version: 'v3', auth: authClient });
+  const res = await drive.files.get(
+    { fileId, alt: 'media', supportsAllDrives: true },
+    { responseType: 'arraybuffer' }
+  );
+  return Buffer.from(res.data);
+}
+
+function detectCsvFormat(headers) {
+  const set = new Set(headers);
+  if (set.has('Direction') && set.has('Transaction Target')) return 'wallet';
+  if (set.has('Card number') && set.has('Status')) return 'card';
+  return 'unknown';
+}
+
+function resolvePersonStrict(cardNumber) {
+  const last4 = extractLast4(cardNumber);
+  return (last4 && DRIVE_CARD_PERSON_MAP[last4]) || UNDEFINED_PERSON;
+}
+
+// POST /api/ads/sync-drive ----------------------------------------------------
+// Pulls all CSVs from the configured Drive folder and ingests them into
+// card_transactions / wallet_transactions, skipping files already imported.
+//   ?dry_run=true   parse + report only, no DB writes
+//   ?reimport=true  ignore drive_file_id dedup
+app.post('/api/ads/sync-drive', requireDb, async (req, res) => {
+  const dryRun = req.query.dry_run === 'true';
+  const reimport = req.query.reimport === 'true';
+  const folderId = req.query.folder_id || DRIVE_CSV_FOLDER_ID;
+
+  // Surface which service-account email this server is using, so the user
+  // knows which SA needs the Drive folder shared if files come back empty.
+  let saEmail = null;
+  try {
+    const creds = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT || '{}');
+    saEmail = creds.client_email || null;
+  } catch (_) {}
+
+  let files;
+  try {
+    files = await listDriveCsvs(folderId);
+  } catch (err) {
+    return res.status(500).json({ error: `Drive list failed: ${err.message}`, serviceAccountEmail: saEmail });
+  }
+
+  const summary = {
+    folderId,
+    serviceAccountEmail: saEmail,
+    dryRun,
+    filesTotal: files.length,
+    filesProcessed: 0,
+    filesSkippedAlreadyImported: 0,
+    filesUnknownFormat: 0,
+    rowsParsed: 0,
+    rowsInserted: 0,
+    rowsUpdated: 0,
+    byPerson: {},
+    unmappedCardLast4: [],
+    files: [],
+  };
+  const unmapped = new Set();
+
+  const cardInsertSql = `
+    INSERT INTO card_transactions (
+      person, card_id, card_number, transaction_serial, original_serial,
+      transaction_amount, transaction_currency,
+      authorized_amount, authorized_currency,
+      authorization_fee, cross_border_fee, settlement_amount,
+      merchant_name, type, status, description, transaction_time, drive_file_id
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+    ON CONFLICT (transaction_serial) DO UPDATE SET
+      person = EXCLUDED.person,
+      card_id = EXCLUDED.card_id,
+      card_number = EXCLUDED.card_number,
+      original_serial = EXCLUDED.original_serial,
+      transaction_amount = EXCLUDED.transaction_amount,
+      transaction_currency = EXCLUDED.transaction_currency,
+      authorized_amount = EXCLUDED.authorized_amount,
+      authorized_currency = EXCLUDED.authorized_currency,
+      authorization_fee = EXCLUDED.authorization_fee,
+      cross_border_fee = EXCLUDED.cross_border_fee,
+      settlement_amount = EXCLUDED.settlement_amount,
+      merchant_name = EXCLUDED.merchant_name,
+      type = EXCLUDED.type,
+      status = EXCLUDED.status,
+      description = EXCLUDED.description,
+      transaction_time = EXCLUDED.transaction_time,
+      drive_file_id = EXCLUDED.drive_file_id
+    RETURNING (xmax = 0) AS inserted
+  `;
+
+  const walletInsertSql = `
+    INSERT INTO wallet_transactions (
+      transaction_id, account_id, account_name, account_type,
+      transaction_target, currency, amount,
+      balance_before, balance_after,
+      business_order_no, business_type, operation_type,
+      direction, remarks, transaction_time, drive_file_id
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+    ON CONFLICT (transaction_id) DO UPDATE SET
+      account_id = EXCLUDED.account_id,
+      account_name = EXCLUDED.account_name,
+      account_type = EXCLUDED.account_type,
+      transaction_target = EXCLUDED.transaction_target,
+      currency = EXCLUDED.currency,
+      amount = EXCLUDED.amount,
+      balance_before = EXCLUDED.balance_before,
+      balance_after = EXCLUDED.balance_after,
+      business_order_no = EXCLUDED.business_order_no,
+      business_type = EXCLUDED.business_type,
+      operation_type = EXCLUDED.operation_type,
+      direction = EXCLUDED.direction,
+      remarks = EXCLUDED.remarks,
+      transaction_time = EXCLUDED.transaction_time,
+      drive_file_id = EXCLUDED.drive_file_id
+    RETURNING (xmax = 0) AS inserted
+  `;
+
+  const client = await pgPool.connect();
+  try {
+    for (const f of files) {
+      const fileEntry = { id: f.id, name: f.name, status: '', rows: 0, byPerson: {} };
+
+      if (!reimport) {
+        const seen = await client.query(
+          `SELECT 1 FROM drive_imports WHERE drive_file_id = $1 LIMIT 1`,
+          [f.id]
+        );
+        if (seen.rowCount > 0) {
+          fileEntry.status = 'skipped (already imported)';
+          summary.filesSkippedAlreadyImported++;
+          summary.files.push(fileEntry);
+          continue;
+        }
+      }
+
+      let buf;
+      try {
+        buf = await downloadDriveFile(f.id);
+      } catch (err) {
+        fileEntry.status = `download error: ${err.message}`;
+        summary.files.push(fileEntry);
+        continue;
+      }
+
+      let records;
+      try {
+        records = csvParse(buf, { columns: true, skip_empty_lines: true, trim: true, bom: true });
+      } catch (err) {
+        fileEntry.status = `parse error: ${err.message}`;
+        summary.files.push(fileEntry);
+        continue;
+      }
+
+      const headers = records.length ? Object.keys(records[0]) : [];
+      const fmt = detectCsvFormat(headers);
+      fileEntry.format = fmt;
+      fileEntry.rows = records.length;
+      summary.rowsParsed += records.length;
+
+      if (fmt === 'unknown') {
+        fileEntry.status = 'unknown format';
+        summary.filesUnknownFormat++;
+        summary.files.push(fileEntry);
+        continue;
+      }
+
+      let fileInserted = 0;
+      let fileUpdated = 0;
+
+      if (fmt === 'card') {
+        for (const r of records) {
+          const serial = (r['Transaction serial number'] || '').trim();
+          if (!serial) continue;
+          const cardNum = r['Card number'] || '';
+          const person = resolvePersonStrict(cardNum);
+          if (person === UNDEFINED_PERSON) {
+            const last4 = extractLast4(cardNum);
+            if (last4) unmapped.add(last4);
+          }
+          const fileBucket = (fileEntry.byPerson[person] ||= { rows: 0, last4: extractLast4(cardNum) || '' });
+          fileBucket.rows++;
+          const sumBucket = (summary.byPerson[person] ||= { rows: 0, php: 0 });
+          sumBucket.rows++;
+          const txnAmt = toNum(r['Transaction amount']);
+          if ((r['Status'] === 'Success' || r['Status'] === 'Authorized') && r['Type'] !== 'Reversal' && txnAmt) {
+            sumBucket.php += txnAmt;
+          }
+
+          if (!dryRun) {
+            try {
+              const result = await client.query(cardInsertSql, [
+                person,
+                r['Card ID'] || null,
+                cardNum || null,
+                serial,
+                r['Original transaction serial number'] || null,
+                txnAmt,
+                r['Transaction currency'] || null,
+                toNum(r['Authorized amount']),
+                r['Authorized currency'] || null,
+                toNum(r['Authorization fee']),
+                toNum(r['Cross-border transaction fee']),
+                toNum(r['Settlement amount']),
+                r['Merchant name'] || null,
+                r['Type'] || null,
+                r['Status'] || null,
+                r['Description'] || null,
+                parseTxTime(r['Transaction time (UTC+0)']),
+                f.id,
+              ]);
+              if (result.rows[0]?.inserted) fileInserted++;
+              else fileUpdated++;
+            } catch (err) { /* swallow per-row */ }
+          }
+        }
+      } else if (fmt === 'wallet') {
+        for (const r of records) {
+          const txnId = (r['Transaction ID'] || '').trim();
+          if (!txnId) continue;
+          const target = r['Transaction Target'] || '';
+          const last4 = (target.includes('******') ? extractLast4(target) : '') || '';
+          const person = (last4 && DRIVE_CARD_PERSON_MAP[last4]) || UNDEFINED_PERSON;
+          if (person === UNDEFINED_PERSON && last4) unmapped.add(last4);
+
+          const fileBucket = (fileEntry.byPerson[person] ||= { rows: 0, last4 });
+          fileBucket.rows++;
+          const sumBucket = (summary.byPerson[person] ||= { rows: 0, php: 0 });
+          sumBucket.rows++;
+
+          if (!dryRun) {
+            try {
+              const result = await client.query(walletInsertSql, [
+                txnId,
+                r['Account ID'] || null,
+                r['Account Name'] || null,
+                r['Account Type'] || null,
+                target || null,
+                r['Transaction currency'] || null,
+                toNum(r['Transaction amount']),
+                toNum(r['Balance before transaction']),
+                toNum(r['Balance after transaction']),
+                r['Business order number'] || null,
+                r['Business type'] || null,
+                r['Operation type'] || null,
+                r['Direction'] || null,
+                r['Remarks'] || null,
+                parseTxTime(r['Transaction time (UTC+0)']),
+                f.id,
+              ]);
+              if (result.rows[0]?.inserted) fileInserted++;
+              else fileUpdated++;
+            } catch (err) { /* swallow per-row */ }
+          }
+        }
+      }
+
+      summary.rowsInserted += fileInserted;
+      summary.rowsUpdated += fileUpdated;
+      fileEntry.status = dryRun ? 'previewed' : 'imported';
+      summary.filesProcessed++;
+
+      if (!dryRun) {
+        try {
+          await client.query(
+            `INSERT INTO drive_imports (drive_file_id, file_name, format, rows_parsed, rows_inserted)
+             VALUES ($1,$2,$3,$4,$5)
+             ON CONFLICT (drive_file_id) DO UPDATE SET
+               file_name = EXCLUDED.file_name,
+               rows_parsed = EXCLUDED.rows_parsed,
+               rows_inserted = EXCLUDED.rows_inserted,
+               imported_at = NOW()`,
+            [f.id, f.name, fmt, records.length, fileInserted]
+          );
+        } catch (err) { /* non-fatal */ }
+      }
+
+      summary.files.push(fileEntry);
+    }
+  } finally {
+    client.release();
+  }
+
+  summary.unmappedCardLast4 = [...unmapped].sort();
+  res.json(summary);
+});
+
 // GET /api/ads/summary --------------------------------------------------------
 app.get('/api/ads/summary', requireDb, async (req, res) => {
   try {
@@ -682,9 +1018,14 @@ app.get('/api/ads/summary', requireDb, async (req, res) => {
         COUNT(*)::int AS "totalTxns",
         COALESCE(SUM(CASE
           WHEN type = 'Authorization' AND status IN ('Authorized','Success')
-          THEN transaction_amount ELSE 0 END), 0)::numeric AS "totalPhp",
+          THEN CASE
+            WHEN UPPER(COALESCE(transaction_currency,'PHP')) IN ('USD','EUR','GBP')
+              THEN COALESCE(authorized_amount, transaction_amount) * 59.8
+            ELSE transaction_amount
+          END
+          ELSE 0 END), 0)::numeric AS "totalPhp",
         COALESCE(SUM(CASE
-          WHEN status IN ('Authorized','Success')
+          WHEN type = 'Authorization' AND status IN ('Authorized','Success')
           THEN authorized_amount ELSE 0 END), 0)::numeric AS "totalUsd",
         COALESCE(SUM(CASE
           WHEN status IN ('Authorized','Success')
@@ -697,6 +1038,7 @@ app.get('/api/ads/summary', requireDb, async (req, res) => {
         MIN(transaction_time) AS "minTime",
         MAX(transaction_time) AS "maxTime"
       FROM card_transactions
+      WHERE person <> 'undefined' OR person IS NULL
     `;
 
     const byPersonSql = `
@@ -706,13 +1048,18 @@ app.get('/api/ads/summary', requireDb, async (req, res) => {
         COUNT(*)::int                                                    AS "txns",
         COALESCE(SUM(CASE
           WHEN type = 'Authorization' AND status IN ('Authorized','Success')
-          THEN transaction_amount ELSE 0 END), 0)::numeric               AS "totalPhp",
+          THEN CASE
+            WHEN UPPER(COALESCE(transaction_currency,'PHP')) IN ('USD','EUR','GBP')
+              THEN COALESCE(authorized_amount, transaction_amount) * 59.8
+            ELSE transaction_amount
+          END
+          ELSE 0 END), 0)::numeric                                       AS "totalPhp",
         COALESCE(SUM(CASE
-          WHEN status IN ('Authorized','Success')
+          WHEN type = 'Authorization' AND status IN ('Authorized','Success')
           THEN authorized_amount ELSE 0 END), 0)::numeric                AS "totalUsd",
         COUNT(*) FILTER (WHERE status = 'Fail')::int                     AS "failed"
       FROM card_transactions
-      WHERE person IS NOT NULL
+      WHERE person IS NOT NULL AND person <> 'undefined'
       GROUP BY person
       ORDER BY "totalPhp" DESC
     `;
@@ -756,7 +1103,7 @@ app.get('/api/ads/transactions', requireDb, async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit) || 100, 1000);
     const offset = Math.max(parseInt(req.query.offset) || 0, 0);
 
-    const where = [];
+    const where = [`(person IS NULL OR person <> 'undefined')`];
     const params = [];
     if (person) { params.push(person); where.push(`person = $${params.length}`); }
     // Map friendly status filter values to DB status/type semantics
@@ -861,7 +1208,7 @@ app.get('/api/ads/by-card', requireDb, async (req, res) => {
         MIN(transaction_time)                                                AS "firstUsed",
         MAX(transaction_time)                                                AS "lastUsed"
       FROM card_transactions
-      WHERE card_number IS NOT NULL
+      WHERE card_number IS NOT NULL AND person <> 'undefined'
       GROUP BY card_number
       ORDER BY "totalPhp" DESC
     `;
@@ -895,6 +1242,7 @@ app.get('/api/ads/daily', requireDb, async (req, res) => {
       WHERE type = 'Authorization'
         AND status IN ('Authorized','Success')
         AND transaction_time IS NOT NULL
+        AND (person IS NULL OR person <> 'undefined')
       GROUP BY DATE(transaction_time)
       ORDER BY DATE(transaction_time) ASC
     `;
@@ -923,6 +1271,7 @@ app.get('/api/ads/hourly', requireDb, async (req, res) => {
           THEN transaction_amount ELSE 0 END), 0)::numeric AS "totalPhp"
       FROM card_transactions
       WHERE transaction_time IS NOT NULL
+        AND (person IS NULL OR person <> 'undefined')
       GROUP BY EXTRACT(HOUR FROM transaction_time)
       ORDER BY "hour" ASC
     `;
@@ -953,7 +1302,7 @@ app.get('/api/ads/failed-pattern', requireDb, async (req, res) => {
         MAX(transaction_time)                                                  AS "lastFailure",
         (ARRAY_AGG(merchant_name ORDER BY transaction_time DESC NULLS LAST))[1] AS "merchant"
       FROM card_transactions
-      WHERE status = 'Fail'
+      WHERE status = 'Fail' AND person <> 'undefined'
       GROUP BY person, card_number
       ORDER BY "failedCount" DESC, "lastFailure" DESC
     `;
@@ -981,7 +1330,7 @@ app.get('/api/ads/reversal-rate', requireDb, async (req, res) => {
         COUNT(*) FILTER (WHERE type = 'Authorization')::int AS "total",
         COUNT(*) FILTER (WHERE type = 'Reversal')::int      AS "reversed"
       FROM card_transactions
-      WHERE person IS NOT NULL
+      WHERE person IS NOT NULL AND person <> 'undefined'
       GROUP BY person
       ORDER BY person ASC
     `;
@@ -1087,7 +1436,7 @@ app.get('/api/ads/plan-vs-actual', requireDb, async (req, res) => {
           WHEN type = 'Authorization' AND status IN ('Authorized','Success')
           THEN transaction_amount ELSE 0 END), 0)::numeric        AS "actualPhp"
       FROM card_transactions
-      WHERE person IS NOT NULL
+      WHERE person IS NOT NULL AND person <> 'undefined'
       GROUP BY person
     `;
     const { rows } = await pgPool.query(actualSql);
@@ -1778,11 +2127,11 @@ app.get('/api/ads/daily-by-person', requireDb, async (req, res) => {
              TO_CHAR(DATE(transaction_time), 'YYYY-MM-DD') AS date,
              COALESCE(SUM(CASE WHEN type = 'Authorization' AND status IN ('Authorized','Success')
                                THEN transaction_amount ELSE 0 END), 0)::float AS php,
-             COALESCE(SUM(CASE WHEN status IN ('Authorized','Success')
+             COALESCE(SUM(CASE WHEN type = 'Authorization' AND status IN ('Authorized','Success')
                                THEN authorized_amount ELSE 0 END), 0)::float AS usd,
              COUNT(*)::int AS count
       FROM card_transactions
-      WHERE person IS NOT NULL AND transaction_time IS NOT NULL
+      WHERE person IS NOT NULL AND person <> 'undefined' AND transaction_time IS NOT NULL
       GROUP BY person, DATE(transaction_time)
       ORDER BY person, DATE(transaction_time) ASC
     `;
@@ -1819,13 +2168,13 @@ app.get('/api/ads/top-merchants', requireDb, async (req, res) => {
              COUNT(*)::int AS count,
              COALESCE(SUM(CASE WHEN type = 'Authorization' AND status IN ('Authorized','Success')
                                THEN transaction_amount ELSE 0 END), 0)::float AS php,
-             COALESCE(SUM(CASE WHEN status IN ('Authorized','Success')
+             COALESCE(SUM(CASE WHEN type = 'Authorization' AND status IN ('Authorized','Success')
                                THEN authorized_amount ELSE 0 END), 0)::float AS usd
       FROM card_transactions
       WHERE merchant_name IS NOT NULL AND merchant_name <> ''
         ${personClause}
       GROUP BY merchant_name, person
-      HAVING COALESCE(SUM(CASE WHEN status IN ('Authorized','Success') THEN authorized_amount ELSE 0 END), 0) > 0
+      HAVING COALESCE(SUM(CASE WHEN type = 'Authorization' AND status IN ('Authorized','Success') THEN authorized_amount ELSE 0 END), 0) > 0
       ORDER BY usd DESC
       LIMIT $${limitIdx}
     `;
