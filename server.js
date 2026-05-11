@@ -509,14 +509,18 @@ app.get('/api/ads/funds-vs-cost', requireDb, async (req, res) => {
       fundsByPerson[person].count++;
     });
 
-    // ── Card cost: card_transactions (PHP + USD) ─────────────────────────────
+    // ── Card cost: card_transactions (PHP + USD via Settlement) ─────────────
+    // Switched 2026-05-11 to match the reconciliation sheet exactly:
+    // SUM(settlement_amount) USD + SUM(transaction_amount) PHP, ALL rows
+    // (no type/status filter). Settlement amount is post-FX USD that
+    // actually cleared. Reversals net to ~0, verifications are ~0, so
+    // including them costs nothing and ties our number to the sheet.
     const costSql = `
       SELECT person,
              COALESCE(SUM(transaction_amount), 0)::numeric AS php,
-             COALESCE(SUM(authorized_amount),  0)::numeric AS usd,
+             COALESCE(SUM(settlement_amount),  0)::numeric AS usd,
              COUNT(*)::int AS rows
       FROM card_transactions
-      WHERE type = 'Authorization' AND status IN ('Authorized','Success')
       GROUP BY person
     `;
     const costByPerson = {};
@@ -637,7 +641,7 @@ app.get('/api/ads/funds-vs-cost', requireDb, async (req, res) => {
       },
       sources: {
         funds: 'Liquidation Sheet → Ads Budget Request sheet (col J Released PHP, col H Released USDT). AWS rows excluded.',
-        cost:  "card_transactions (type='Authorization', status IN ('Authorized','Success'))",
+        cost:  'card_transactions: SUM(settlement_amount) USD + SUM(transaction_amount) PHP, ALL rows (matches reconciliation sheet).',
         markFunds: 'Same as everyone else: Ads Budget Request sheet. Wallet IN shown only as context.',
       },
     });
@@ -703,14 +707,13 @@ app.get('/api/ads/wallet-vs-cost', requireDb, async (req, res) => {
       }
     });
 
-    // ── Card cost per person (same scope as funds-vs-cost) ───────────────────
+    // ── Card cost per person (Settlement basis, all rows — matches sheet) ──
     const costSql = `
       SELECT person,
              COALESCE(SUM(transaction_amount), 0)::numeric AS php,
-             COALESCE(SUM(authorized_amount),  0)::numeric AS usd,
+             COALESCE(SUM(settlement_amount),  0)::numeric AS usd,
              COUNT(*)::int                                 AS rows
       FROM card_transactions
-      WHERE type = 'Authorization' AND status IN ('Authorized','Success')
       GROUP BY person
     `;
     const costByPerson = {};
@@ -779,7 +782,7 @@ app.get('/api/ads/wallet-vs-cost', requireDb, async (req, res) => {
       unmappedWallets,
       sources: {
         walletIn: "wallet_transactions (direction='In', USDT) × weighted FX from sheet",
-        cost:     "card_transactions (type='Authorization', status IN ('Authorized','Success'))",
+        cost:     'card_transactions: SUM(settlement_amount) USD + SUM(transaction_amount) PHP, ALL rows (matches reconciliation sheet).',
         mapping:  'Hardcoded wallet → person map derived from card target activity (2026-05-11)',
       },
     });
