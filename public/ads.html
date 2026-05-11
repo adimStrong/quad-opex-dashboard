@@ -2017,13 +2017,17 @@ function renderFundsVsCost(data) {
 
   if (metaEl) {
     const oos = data.outOfScope;
+    const aws = data.excludedAws;
     const oosNote = oos && oos.rows
       ? ` · Excluded ${fmtCount(oos.rows)} non-advertiser fund requests (${fmtPhp(oos.fundsPhp)} — EJ Uy, JD Palma, Keldry, Kenson, etc.)`
+      : '';
+    const awsNote = aws && aws.rows
+      ? ` · AWS rows excluded: ${fmtCount(aws.rows)} entries totaling ${fmtPhp(aws.fundsPhp)} (infrastructure, not ad spend)`
       : '';
     metaEl.textContent =
       `Funds source: Ads Budget Request sheet (col J Released PHP). ` +
       `Cost source: card_transactions (Authorization, Authorized/Success only). ` +
-      `Mark fund source: wallet loads × FX ${(data.fxRate || 0).toFixed(2)}.${oosNote}`;
+      `FX rate: ${(data.fxRate || 0).toFixed(2)}.${oosNote}${awsNote}`;
   }
 }
 

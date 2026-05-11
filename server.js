@@ -468,6 +468,8 @@ app.get('/api/ads/funds-vs-cost', requireDb, async (req, res) => {
     let fundsOutOfScopePhp = 0;
     let fundsOutOfScopeUsdt = 0;
     let fundsOutOfScopeCount = 0;
+    // Track AWS-cost rows we deliberately exclude so the UI can show them as a footnote.
+    const excludedAws = { php: 0, usdt: 0, rows: 0, perPerson: {} };
     // Col H (idx 7) sometimes contains a PHP value with ₱ — treat as 0 USDT.
     const parseUsdtCell = (val) => {
       if (!val) return 0;
@@ -475,11 +477,25 @@ app.get('/api/ads/funds-vs-cost', requireDb, async (req, res) => {
       if (s.includes('₱')) return 0;
       return parseAmount(s);
     };
+    // AWS is infrastructure, not ad spend. Filter out anywhere in the
+    // description (case-insensitive) so it doesn't inflate anyone's "funds requested".
+    const isAwsRow = (description) => /\baws\b/i.test(String(description || ''));
     sheetRows.forEach(r => {
       const recipient = (r[1] || '').trim();
+      const description = r[4] || '';
       const php  = parseAmount(r[9]);
       const usdt = parseUsdtCell(r[7]);
       if (!recipient || (!php && !usdt)) return;
+
+      if (isAwsRow(description)) {
+        excludedAws.php  += php;
+        excludedAws.usdt += usdt;
+        excludedAws.rows++;
+        const person = RECIPIENT_TO_PERSON(recipient) || recipient;
+        excludedAws.perPerson[person] = (excludedAws.perPerson[person] || 0) + php;
+        return;
+      }
+
       const person = RECIPIENT_TO_PERSON(recipient);
       if (!person) {
         fundsOutOfScopePhp  += php;
@@ -613,10 +629,16 @@ app.get('/api/ads/funds-vs-cost', requireDb, async (req, res) => {
         fundsUsd:  fundsOutOfScopeUsdt > 0 ? fundsOutOfScopeUsdt : (fxRate > 0 ? fundsOutOfScopePhp / fxRate : 0),
         rows:      fundsOutOfScopeCount,
       },
+      excludedAws: {
+        fundsPhp: excludedAws.php,
+        fundsUsd: excludedAws.usdt > 0 ? excludedAws.usdt : (fxRate > 0 ? excludedAws.php / fxRate : 0),
+        rows: excludedAws.rows,
+        perPerson: excludedAws.perPerson,
+      },
       sources: {
-        funds: 'Liquidation Sheet → Ads Budget Request sheet (col J Released PHP, col H Released USDT)',
+        funds: 'Liquidation Sheet → Ads Budget Request sheet (col J Released PHP, col H Released USDT). AWS rows excluded.',
         cost:  "card_transactions (type='Authorization', status IN ('Authorized','Success'))",
-        markFunds: 'wallet_transactions (direction=IN) × weighted FX rate from sheet',
+        markFunds: 'Same as everyone else: Ads Budget Request sheet. Wallet IN shown only as context.',
       },
     });
   } catch (err) {
