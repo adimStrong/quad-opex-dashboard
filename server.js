@@ -559,8 +559,8 @@ const CARD_PERSON_MAP = {
   '5344': 'Ron',
   '7012': 'Mika',
   '8174': 'Mika',
-  '2807': 'Unknown-2807',
-  '5026': 'Unknown-5026',
+  '2807': 'Jason',
+  '5026': 'Ron',
 };
 
 const resolvePersonFromCard = (cardNumber, fallback) => {
@@ -714,8 +714,8 @@ const DRIVE_CARD_PERSON_MAP = {
   '5344': 'Ron',
   '7012': 'Mika',
   '8174': 'Mika',
-  '2807': 'Unknown-2807',
-  '5026': 'Unknown-5026',
+  '2807': 'Jason',
+  '5026': 'Ron',
 };
 const UNDEFINED_PERSON = 'undefined';
 
