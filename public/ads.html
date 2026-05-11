@@ -203,6 +203,15 @@ h2.card-title, h3.card-title { line-height: 1.25; }
 }
 .fvc-stat .val.pos { color: var(--green, #3F7866); }
 .fvc-stat .val.neg { color: var(--red,   #C15F3C); }
+.fvc-stat .sub-val {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  margin-top: 1px;
+}
+.fvc-stat .sub-val.pos { color: var(--green, #3F7866); }
+.fvc-stat .sub-val.neg { color: var(--red,   #C15F3C); }
 .fvc-bar {
   position: relative;
   height: 8px;
@@ -1915,20 +1924,38 @@ function renderFundsVsCost(data) {
   const ad = data.advertising;
   const mk = data.mark || {};
 
-  const card = (title, sub, fundsPhp, costPhp, util, varVal) => {
+  const card = (title, sub, fundsPhp, fundsUsd, costPhp, costUsd, util, varPhp, varUsd) => {
     const utilClass = util != null && util > 100 ? 'over' : '';
     const utilPct   = util != null ? util.toFixed(1) + '%' : '—';
-    const varSign   = varVal == null ? '—' : (varVal >= 0 ? 'pos' : 'neg');
+    const varSign   = varPhp == null ? '—' : (varPhp >= 0 ? 'pos' : 'neg');
     const barWidth  = util != null ? Math.min(util, 100).toFixed(1) : 0;
+    const varPhpStr = varPhp == null ? '—' : ((varPhp >= 0 ? '+' : '') + fmtPhp(varPhp));
+    const varUsdStr = varUsd == null ? '—' : ((varUsd >= 0 ? '+' : '') + fmtUsd(varUsd));
     return `
       <div class="fvc-card">
         <h3>${title}</h3>
         <div class="fvc-sub">${sub}</div>
         <div class="fvc-stats">
-          <div class="fvc-stat"><span class="lbl">Funds requested</span><span class="val">${fmtPhp(fundsPhp)}</span></div>
-          <div class="fvc-stat"><span class="lbl">Card cost</span><span class="val">${fmtPhp(costPhp)}</span></div>
-          <div class="fvc-stat"><span class="lbl">Variance</span><span class="val ${varSign}">${varVal == null ? '—' : (varVal >= 0 ? '+' : '') + fmtPhp(varVal)}</span></div>
-          <div class="fvc-stat"><span class="lbl">Utilization</span><span class="val ${utilClass ? 'neg' : ''}">${utilPct}</span></div>
+          <div class="fvc-stat">
+            <span class="lbl">Funds requested</span>
+            <span class="val">${fmtPhp(fundsPhp)}</span>
+            <span class="sub-val">${fmtUsd(fundsUsd)}</span>
+          </div>
+          <div class="fvc-stat">
+            <span class="lbl">Card cost</span>
+            <span class="val">${fmtPhp(costPhp)}</span>
+            <span class="sub-val">${fmtUsd(costUsd)}</span>
+          </div>
+          <div class="fvc-stat">
+            <span class="lbl">Variance</span>
+            <span class="val ${varSign}">${varPhpStr}</span>
+            <span class="sub-val ${varSign}">${varUsdStr}</span>
+          </div>
+          <div class="fvc-stat">
+            <span class="lbl">Utilization</span>
+            <span class="val ${utilClass ? 'neg' : ''}">${utilPct}</span>
+            <span class="sub-val">PHP basis</span>
+          </div>
         </div>
         <div class="fvc-bar ${utilClass}"><span style="width:${barWidth}%;"></span></div>
         <div class="fvc-util-line">
@@ -1943,24 +1970,30 @@ function renderFundsVsCost(data) {
     card(
       'Advertising group',
       `${ad.members.join(', ')} · ${fmtCount(ad.fundCount)} fund requests · ${fmtCount(ad.txCount)} card txns`,
-      ad.fundsPhp, ad.costPhp, ad.utilization, ad.variance
+      ad.fundsPhp, ad.fundsUsd, ad.costPhp, ad.costUsd,
+      ad.utilization, ad.variancePhp, ad.varianceUsd
     ) +
     card(
       'Mark (standalone)',
       `Wallet loads (${fmtCount(mk.walletRows || 0)} IN, ${(mk.fundsUsdtWallet || 0).toFixed(2)} USDT @ ${(data.fxRate || 0).toFixed(2)}) · ${fmtCount(mk.txCount || 0)} card txns`,
-      mk.primaryFundsPhp || 0, mk.costPhp || 0, mk.utilization, mk.variance
+      mk.primaryFundsPhp || 0, mk.primaryFundsUsd || 0,
+      mk.costPhp || 0, mk.costUsd || 0,
+      mk.utilization, mk.variancePhp, mk.varianceUsd
     );
 
   // Per-person breakdown table for Advertising group
   if (ppEl) {
     const rows = ad.perPerson.map(p => {
-      const varClass = p.variance >= 0 ? 'pos' : 'neg';
+      const varClass = p.variancePhp >= 0 ? 'pos' : 'neg';
       const util = p.utilization != null ? p.utilization.toFixed(1) + '%' : '—';
       return `<tr>
         <td>${p.person}</td>
         <td>${fmtPhp(p.fundsPhp)}</td>
+        <td>${fmtUsd(p.fundsUsd)}</td>
         <td>${fmtPhp(p.costPhp)}</td>
-        <td class="${varClass}">${(p.variance >= 0 ? '+' : '') + fmtPhp(p.variance)}</td>
+        <td>${fmtUsd(p.costUsd)}</td>
+        <td class="${varClass}">${(p.variancePhp >= 0 ? '+' : '') + fmtPhp(p.variancePhp)}</td>
+        <td class="${varClass}">${(p.varianceUsd >= 0 ? '+' : '') + fmtUsd(p.varianceUsd)}</td>
         <td>${util}</td>
       </tr>`;
     }).join('');
@@ -1969,7 +2002,13 @@ function renderFundsVsCost(data) {
         <summary style="cursor:pointer;color:var(--ink-2,#444);font-size:0.85rem;padding:4px 0;">Per-person breakdown (Advertising group)</summary>
         <table class="fvc-pp-table" style="margin-top:8px;">
           <thead>
-            <tr><th>Person</th><th>Funds</th><th>Cost</th><th>Variance</th><th>Util</th></tr>
+            <tr>
+              <th>Person</th>
+              <th>Funds ₱</th><th>Funds $</th>
+              <th>Cost ₱</th><th>Cost $</th>
+              <th>Var ₱</th><th>Var $</th>
+              <th>Util</th>
+            </tr>
           </thead>
           <tbody>${rows}</tbody>
         </table>

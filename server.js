@@ -465,33 +465,51 @@ app.get('/api/ads/funds-vs-cost', requireDb, async (req, res) => {
     // ── Funds: Ads Budget Request sheet ──────────────────────────────────────
     const sheetRows = await getSheetData('Ads Budget Request sheet', 'A2:J1000');
     const fundsByPerson = {};
-    let fundsOutOfScope = 0;
+    let fundsOutOfScopePhp = 0;
+    let fundsOutOfScopeUsdt = 0;
     let fundsOutOfScopeCount = 0;
+    // Col H (idx 7) sometimes contains a PHP value with ₱ — treat as 0 USDT.
+    const parseUsdtCell = (val) => {
+      if (!val) return 0;
+      const s = String(val);
+      if (s.includes('₱')) return 0;
+      return parseAmount(s);
+    };
     sheetRows.forEach(r => {
       const recipient = (r[1] || '').trim();
-      const php = parseAmount(r[9]);
-      if (!recipient || !php) return;
+      const php  = parseAmount(r[9]);
+      const usdt = parseUsdtCell(r[7]);
+      if (!recipient || (!php && !usdt)) return;
       const person = RECIPIENT_TO_PERSON(recipient);
       if (!person) {
-        fundsOutOfScope += php;
+        fundsOutOfScopePhp  += php;
+        fundsOutOfScopeUsdt += usdt;
         fundsOutOfScopeCount++;
         return;
       }
-      if (!fundsByPerson[person]) fundsByPerson[person] = { php: 0, count: 0 };
-      fundsByPerson[person].php += php;
+      if (!fundsByPerson[person]) fundsByPerson[person] = { php: 0, usdt: 0, count: 0 };
+      fundsByPerson[person].php  += php;
+      fundsByPerson[person].usdt += usdt;
       fundsByPerson[person].count++;
     });
 
-    // ── Card cost: card_transactions ─────────────────────────────────────────
+    // ── Card cost: card_transactions (PHP + USD) ─────────────────────────────
     const costSql = `
-      SELECT person, COALESCE(SUM(transaction_amount), 0)::numeric AS php, COUNT(*)::int AS rows
+      SELECT person,
+             COALESCE(SUM(transaction_amount), 0)::numeric AS php,
+             COALESCE(SUM(authorized_amount),  0)::numeric AS usd,
+             COUNT(*)::int AS rows
       FROM card_transactions
       WHERE type = 'Authorization' AND status IN ('Authorized','Success')
       GROUP BY person
     `;
     const costByPerson = {};
     (await pgPool.query(costSql)).rows.forEach(r => {
-      costByPerson[r.person] = { php: Number(r.php) || 0, rows: r.rows };
+      costByPerson[r.person] = {
+        php:  Number(r.php) || 0,
+        usd:  Number(r.usd) || 0,
+        rows: r.rows,
+      };
     });
 
     // ── Wallet IN for Mark (alternate fund-in source) ────────────────────────
@@ -517,47 +535,62 @@ app.get('/api/ads/funds-vs-cost', requireDb, async (req, res) => {
     const advertising = {
       members: ADVERTISING_GROUP,
       fundsPhp: 0,
+      fundsUsd: 0,
       costPhp: 0,
+      costUsd: 0,
       fundCount: 0,
       txCount: 0,
       perPerson: [],
     };
     ADVERTISING_GROUP.forEach(person => {
-      const funds = fundsByPerson[person] || { php: 0, count: 0 };
-      const cost  = costByPerson[person]  || { php: 0, rows: 0 };
+      const funds = fundsByPerson[person] || { php: 0, usdt: 0, count: 0 };
+      const cost  = costByPerson[person]  || { php: 0, usd:  0, rows:  0 };
+      // If the sheet didn't record USDT for a person but did record PHP,
+      // derive an implied USD from the weighted FX rate so the USD column
+      // isn't artificially $0.
+      const fundsUsd = funds.usdt > 0 ? funds.usdt : (fxRate > 0 ? funds.php / fxRate : 0);
       advertising.fundsPhp  += funds.php;
+      advertising.fundsUsd  += fundsUsd;
       advertising.costPhp   += cost.php;
+      advertising.costUsd   += cost.usd;
       advertising.fundCount += funds.count;
       advertising.txCount   += cost.rows;
       advertising.perPerson.push({
         person,
         fundsPhp: funds.php,
-        costPhp: cost.php,
-        variance: funds.php - cost.php,
+        fundsUsd,
+        costPhp:  cost.php,
+        costUsd:  cost.usd,
+        variancePhp: funds.php - cost.php,
+        varianceUsd: fundsUsd - cost.usd,
         utilization: funds.php > 0 ? (cost.php / funds.php) * 100 : null,
       });
     });
-    advertising.variance = advertising.fundsPhp - advertising.costPhp;
-    advertising.utilization = advertising.fundsPhp > 0
+    advertising.variancePhp  = advertising.fundsPhp - advertising.costPhp;
+    advertising.varianceUsd  = advertising.fundsUsd - advertising.costUsd;
+    advertising.utilization  = advertising.fundsPhp > 0
       ? (advertising.costPhp / advertising.fundsPhp) * 100
       : null;
 
     // ── Mark (standalone) ────────────────────────────────────────────────────
-    const markFundsBudget = (fundsByPerson['Mark'] || { php: 0, count: 0 });
-    const markCost = costByPerson['Mark'] || { php: 0, rows: 0 };
+    const markFundsBudget = (fundsByPerson['Mark'] || { php: 0, usdt: 0, count: 0 });
+    const markCost = costByPerson['Mark'] || { php: 0, usd: 0, rows: 0 };
     const markWalletPhp = markWalletUsdt * fxRate;
     const mark = {
-      fundsPhpBudget: markFundsBudget.php,           // from Ads Budget Request
-      fundsPhpWallet: markWalletPhp,                 // from wallet IN × FX
+      fundsPhpBudget: markFundsBudget.php,
+      fundsUsdtBudget: markFundsBudget.usdt,
+      fundsPhpWallet: markWalletPhp,
       fundsUsdtWallet: markWalletUsdt,
       walletRows: markWalletRows,
       budgetRows: markFundsBudget.count,
       costPhp: markCost.php,
+      costUsd: markCost.usd,
       txCount: markCost.rows,
-      // Per the operator's earlier answer: "Mark wallet loads" is the
-      // primary fund-in source for the Mark side of this comparison.
+      // Per operator: wallet loads are Mark's primary fund-in source.
       primaryFundsPhp: markWalletPhp,
-      variance: markWalletPhp - markCost.php,
+      primaryFundsUsd: markWalletUsdt,
+      variancePhp: markWalletPhp - markCost.php,
+      varianceUsd: markWalletUsdt - markCost.usd,
       utilization: markWalletPhp > 0 ? (markCost.php / markWalletPhp) * 100 : null,
     };
 
@@ -565,9 +598,13 @@ app.get('/api/ads/funds-vs-cost', requireDb, async (req, res) => {
       advertising,
       mark,
       fxRate,
-      outOfScope: { fundsPhp: fundsOutOfScope, rows: fundsOutOfScopeCount },
+      outOfScope: {
+        fundsPhp:  fundsOutOfScopePhp,
+        fundsUsd:  fundsOutOfScopeUsdt > 0 ? fundsOutOfScopeUsdt : (fxRate > 0 ? fundsOutOfScopePhp / fxRate : 0),
+        rows:      fundsOutOfScopeCount,
+      },
       sources: {
-        funds: 'Liquidation Sheet → Ads Budget Request sheet (col J Released PHP)',
+        funds: 'Liquidation Sheet → Ads Budget Request sheet (col J Released PHP, col H Released USDT)',
         cost:  "card_transactions (type='Authorization', status IN ('Authorized','Success'))",
         markFunds: 'wallet_transactions (direction=IN) × weighted FX rate from sheet',
       },
