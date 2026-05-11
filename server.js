@@ -573,25 +573,35 @@ app.get('/api/ads/funds-vs-cost', requireDb, async (req, res) => {
       : null;
 
     // ── Mark (standalone) ────────────────────────────────────────────────────
+    // Funds source for Mark = Ads Budget Request sheet (same as the Advertising
+    // group). Wallet IN loads are shown as context only — not added to the
+    // primary funds figure to avoid double-counting against card spend.
     const markFundsBudget = (fundsByPerson['Mark'] || { php: 0, usdt: 0, count: 0 });
     const markCost = costByPerson['Mark'] || { php: 0, usd: 0, rows: 0 };
     const markWalletPhp = markWalletUsdt * fxRate;
+    const markFundsUsd = markFundsBudget.usdt > 0
+      ? markFundsBudget.usdt
+      : (fxRate > 0 ? markFundsBudget.php / fxRate : 0);
     const mark = {
+      // Primary (Ads Budget Request sheet)
       fundsPhpBudget: markFundsBudget.php,
+      fundsUsdBudget: markFundsUsd,
       fundsUsdtBudget: markFundsBudget.usdt,
+      budgetRows: markFundsBudget.count,
+      // Context (wallet loads — not summed into variance)
       fundsPhpWallet: markWalletPhp,
       fundsUsdtWallet: markWalletUsdt,
       walletRows: markWalletRows,
-      budgetRows: markFundsBudget.count,
+      // Card spend
       costPhp: markCost.php,
       costUsd: markCost.usd,
       txCount: markCost.rows,
-      // Per operator: wallet loads are Mark's primary fund-in source.
-      primaryFundsPhp: markWalletPhp,
-      primaryFundsUsd: markWalletUsdt,
-      variancePhp: markWalletPhp - markCost.php,
-      varianceUsd: markWalletUsdt - markCost.usd,
-      utilization: markWalletPhp > 0 ? (markCost.php / markWalletPhp) * 100 : null,
+      // Headline metrics use budget-sheet figures
+      primaryFundsPhp: markFundsBudget.php,
+      primaryFundsUsd: markFundsUsd,
+      variancePhp: markFundsBudget.php - markCost.php,
+      varianceUsd: markFundsUsd - markCost.usd,
+      utilization: markFundsBudget.php > 0 ? (markCost.php / markFundsBudget.php) * 100 : null,
     };
 
     res.json({

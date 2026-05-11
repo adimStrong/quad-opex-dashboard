@@ -1975,7 +1975,7 @@ function renderFundsVsCost(data) {
     ) +
     card(
       'Mark (standalone)',
-      `Wallet loads (${fmtCount(mk.walletRows || 0)} IN, ${(mk.fundsUsdtWallet || 0).toFixed(2)} USDT @ ${(data.fxRate || 0).toFixed(2)}) · ${fmtCount(mk.txCount || 0)} card txns`,
+      `${fmtCount(mk.budgetRows || 0)} budget requests · ${fmtCount(mk.txCount || 0)} card txns · also funded ${(mk.fundsUsdtWallet || 0).toFixed(2)} USDT via wallet (${fmtCount(mk.walletRows || 0)} loads, context only)`,
       mk.primaryFundsPhp || 0, mk.primaryFundsUsd || 0,
       mk.costPhp || 0, mk.costUsd || 0,
       mk.utilization, mk.variancePhp, mk.varianceUsd
