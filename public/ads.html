@@ -619,6 +619,33 @@ td.num, .num { text-align: right; }
       <div id="fvcMeta" style="margin-top:10px;font-size:0.78rem;color:#888;"></div>
     </div>
 
+    <!-- ═══ Wallet IN vs Card Spend (per person) ═══ -->
+    <div class="card" id="walletVsCostCard" style="border: 2px solid rgba(63,120,102,0.20);">
+      <h2 class="card-title">💱 Wallet IN vs Card Spend (per person)</h2>
+      <p style="color:#666;font-size:0.9rem;margin:0 0 18px 0;">
+        New lens: treats <em>wallet on-chain deposits</em> as "funds sent" to each person,
+        compared with what they actually spent on cards. Same 7 ads people as the panel above —
+        but sourced from <code>wallet_transactions</code>, not the budget sheet.
+      </p>
+      <div id="wvcTotals" style="margin-bottom:14px;"></div>
+      <table class="fvc-pp-table" id="wvcTable" style="margin-top:8px;">
+        <thead>
+          <tr>
+            <th>Person</th>
+            <th>Wallet IN ₱</th>
+            <th>Wallet IN $</th>
+            <th>Card spend ₱</th>
+            <th>Card spend $</th>
+            <th>Var ₱</th>
+            <th>Var $</th>
+            <th>Util</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <div id="wvcMeta" style="margin-top:10px;font-size:0.78rem;color:#888;"></div>
+    </div>
+
     <!-- ═══ Ads Spend by Advertiser (hero summary) ═══ -->
     <div class="card advertiser-summary" style="border: 2px solid rgba(102,126,234,0.25);">
       <h2 class="card-title">💼 Ads Spend by Advertiser</h2>
@@ -975,6 +1002,8 @@ const API = {
   topMerchants:  '/api/ads/top-merchants',
   // Funds vs Cost (Advertising group + Mark)
   fundsVsCost:   '/api/ads/funds-vs-cost',
+  // Wallet IN vs Card Spend (per person)
+  walletVsCost:  '/api/ads/wallet-vs-cost',
 };
 
 const PAGE_SIZE = 100;
@@ -1077,7 +1106,7 @@ async function fetchJson(url) {
 async function refreshAll() {
   showLoader('Refreshing data...');
   try {
-    const [summary, daily, hourly, byCard, failedPat, reversal, fxRate, plan, dailyByPerson, topMerchants, fundsVsCost] = await Promise.all([
+    const [summary, daily, hourly, byCard, failedPat, reversal, fxRate, plan, dailyByPerson, topMerchants, fundsVsCost, walletVsCost] = await Promise.all([
       fetchJson(API.summary).catch(e => { console.warn(e); return null; }),
       fetchJson(API.daily).catch(e => { console.warn(e); return []; }),
       fetchJson(API.hourly).catch(e => { console.warn(e); return []; }),
@@ -1089,6 +1118,7 @@ async function refreshAll() {
       fetchJson(API.dailyByPerson).catch(e => { console.warn(e); return []; }),
       fetchJson(API.topMerchants + '?limit=15').catch(e => { console.warn(e); return []; }),
       fetchJson(API.fundsVsCost).catch(e => { console.warn(e); return null; }),
+      fetchJson(API.walletVsCost).catch(e => { console.warn(e); return null; }),
     ]);
 
     const hasCardData = summary && (Number(summary.totalTxns) > 0 || Number(summary.totalPhp) > 0);
@@ -1112,6 +1142,9 @@ async function refreshAll() {
 
       // Funds Requested vs Card Cost (Advertising group + Mark standalone)
       renderFundsVsCost(fundsVsCost);
+
+      // Wallet IN vs Card Spend (per person)
+      renderWalletVsCost(walletVsCost);
 
       // New advertiser summary renderers
       renderAdvertiserCards(summary?.byPerson || [], dailyByPerson || []);
@@ -2028,6 +2061,86 @@ function renderFundsVsCost(data) {
       `Funds source: Ads Budget Request sheet (col J Released PHP). ` +
       `Cost source: card_transactions (Authorization, Authorized/Success only). ` +
       `FX rate: ${(data.fxRate || 0).toFixed(2)}.${oosNote}${awsNote}`;
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// Wallet IN vs Card Spend (per person)
+// ══════════════════════════════════════════════════════════
+function renderWalletVsCost(data) {
+  const tbody = document.querySelector('#wvcTable tbody');
+  const totalsEl = document.getElementById('wvcTotals');
+  const metaEl = document.getElementById('wvcMeta');
+  if (!tbody) return;
+  if (!data || !data.perPerson) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#999;padding:20px;">Wallet-vs-cost data unavailable.</td></tr>';
+    if (totalsEl) totalsEl.innerHTML = '';
+    if (metaEl) metaEl.textContent = '';
+    return;
+  }
+
+  // Per-person rows
+  tbody.innerHTML = data.perPerson.map(p => {
+    const varClass = p.variancePhp >= 0 ? 'pos' : 'neg';
+    const util = p.utilization != null ? p.utilization.toFixed(1) + '%' : '—';
+    return `<tr>
+      <td>${p.person}${p.wallets && p.wallets.length ? `<div style="font-size:0.72rem;color:#999;">${p.wallets.join(', ')}</div>` : ''}</td>
+      <td>${fmtPhp(p.walletInPhp)}</td>
+      <td>${fmtUsd(p.walletInUsdt)}</td>
+      <td>${fmtPhp(p.costPhp)}</td>
+      <td>${fmtUsd(p.costUsd)}</td>
+      <td class="${varClass}">${(p.variancePhp >= 0 ? '+' : '') + fmtPhp(p.variancePhp)}</td>
+      <td class="${varClass}">${(p.varianceUsd >= 0 ? '+' : '') + fmtUsd(p.varianceUsd)}</td>
+      <td>${util}</td>
+    </tr>`;
+  }).join('');
+
+  // Totals card
+  if (totalsEl && data.totals) {
+    const t = data.totals;
+    const totalVarClass = t.variancePhp >= 0 ? 'pos' : 'neg';
+    const totalUtilClass = t.utilization != null && t.utilization > 100 ? 'over' : '';
+    const utilPct = t.utilization != null ? t.utilization.toFixed(1) + '%' : '—';
+    const barWidth = t.utilization != null ? Math.min(t.utilization, 100).toFixed(1) : 0;
+    totalsEl.innerHTML = `
+      <div class="fvc-card" style="background:#fbfaf6;">
+        <h3>All 7 ads people — combined</h3>
+        <div class="fvc-sub">Wallet IN (on-chain deposits + card withdrawals) vs card spend</div>
+        <div class="fvc-stats">
+          <div class="fvc-stat">
+            <span class="lbl">Wallet IN</span>
+            <span class="val">${fmtPhp(t.walletInPhp)}</span>
+            <span class="sub-val">${fmtUsd(t.walletInUsdt)}</span>
+          </div>
+          <div class="fvc-stat">
+            <span class="lbl">Card spend</span>
+            <span class="val">${fmtPhp(t.costPhp)}</span>
+            <span class="sub-val">${fmtUsd(t.costUsd)}</span>
+          </div>
+          <div class="fvc-stat">
+            <span class="lbl">Variance</span>
+            <span class="val ${totalVarClass}">${(t.variancePhp >= 0 ? '+' : '') + fmtPhp(t.variancePhp)}</span>
+            <span class="sub-val ${totalVarClass}">${(t.varianceUsd >= 0 ? '+' : '') + fmtUsd(t.varianceUsd)}</span>
+          </div>
+          <div class="fvc-stat">
+            <span class="lbl">Utilization</span>
+            <span class="val ${totalUtilClass ? 'neg' : ''}">${utilPct}</span>
+            <span class="sub-val">PHP basis</span>
+          </div>
+        </div>
+        <div class="fvc-bar ${totalUtilClass}"><span style="width:${barWidth}%;"></span></div>
+      </div>`;
+  }
+
+  if (metaEl) {
+    const unmapped = data.unmappedWallets || [];
+    const unmappedNote = unmapped.length
+      ? ` · Unmapped wallets (skipped): ${unmapped.map(w => w.wallet + ' ($' + w.usdt.toFixed(2) + ')').join(', ')}`
+      : '';
+    metaEl.textContent =
+      `Wallet IN source: wallet_transactions (direction=In) × FX ${(data.fxRate || 0).toFixed(2)}. ` +
+      `Card spend source: card_transactions (Authorization, Authorized/Success only). ` +
+      `Wallet-to-person mapping is hardcoded (derived from card-target activity on 2026-05-11).${unmappedNote}`;
   }
 }
 

@@ -647,6 +647,148 @@ app.get('/api/ads/funds-vs-cost', requireDb, async (req, res) => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// /api/ads/wallet-vs-cost
+// Sibling view to /api/ads/funds-vs-cost — uses Wallet IN (on-chain deposits +
+// card withdrawals into wallet) as the "funds sent" figure instead of the
+// Ads Budget Request sheet. Same per-person scope (7 ads people).
+//
+// Wallet-to-person mapping is hardcoded — derived from each wallet's
+// transaction_target activity (cards each wallet interacts with) on
+// 2026-05-11. Mapping is unambiguous: every wallet maps to exactly one
+// person via CARD_PERSON_MAP.
+// ---------------------------------------------------------------------------
+const WALLET_PERSON_MAP = {
+  'wallet80365843': 'Ron',
+  'wallet36012409': 'Shila',
+  'wallet95049301': 'Jason',
+  'wallet08853230': 'Mika',
+  'wallet02258446': 'Mark',
+  'wallet34647309': 'John Paul',
+  'wallet93087722': 'Jomar',
+};
+
+app.get('/api/ads/wallet-vs-cost', requireDb, async (req, res) => {
+  try {
+    // ── Wallet IN per account ────────────────────────────────────────────────
+    const walletSql = `
+      SELECT account_name,
+             direction,
+             COALESCE(SUM(amount), 0)::numeric AS usdt,
+             COUNT(*)::int                     AS rows
+      FROM wallet_transactions
+      GROUP BY account_name, direction
+    `;
+    const walletRows = (await pgPool.query(walletSql)).rows;
+    // Roll up per person (sum across all their wallets — currently 1:1 but
+    // future-proof in case a person ever has multiple wallets).
+    const walletByPerson = {};
+    const unmappedWallets = [];
+    walletRows.forEach(r => {
+      const person = WALLET_PERSON_MAP[r.account_name];
+      if (!person) {
+        if (r.direction && r.direction.toLowerCase() === 'in') {
+          unmappedWallets.push({ wallet: r.account_name, usdt: Number(r.usdt) || 0, rows: r.rows });
+        }
+        return;
+      }
+      if (!walletByPerson[person]) walletByPerson[person] = { in: 0, out: 0, inRows: 0, outRows: 0, wallets: new Set() };
+      walletByPerson[person].wallets.add(r.account_name);
+      if (r.direction && r.direction.toLowerCase() === 'in') {
+        walletByPerson[person].in     += Number(r.usdt) || 0;
+        walletByPerson[person].inRows += r.rows;
+      } else {
+        walletByPerson[person].out     += Number(r.usdt) || 0;
+        walletByPerson[person].outRows += r.rows;
+      }
+    });
+
+    // ── Card cost per person (same scope as funds-vs-cost) ───────────────────
+    const costSql = `
+      SELECT person,
+             COALESCE(SUM(transaction_amount), 0)::numeric AS php,
+             COALESCE(SUM(authorized_amount),  0)::numeric AS usd,
+             COUNT(*)::int                                 AS rows
+      FROM card_transactions
+      WHERE type = 'Authorization' AND status IN ('Authorized','Success')
+      GROUP BY person
+    `;
+    const costByPerson = {};
+    (await pgPool.query(costSql)).rows.forEach(r => {
+      costByPerson[r.person] = { php: Number(r.php) || 0, usd: Number(r.usd) || 0, rows: r.rows };
+    });
+
+    // ── FX rate (weighted from Ads Budget Request sheet, fallback 59.8) ──────
+    let fxRate = 59.8;
+    try {
+      const sheetRows = await getSheetData('Ads Budget Request sheet', 'A2:J1000');
+      let num = 0, den = 0;
+      sheetRows.forEach(r => {
+        const usdt = (() => {
+          const s = String(r[7] || '');
+          if (!s || s.includes('₱')) return 0;
+          return parseAmount(s);
+        })();
+        const rate = parseAmount(r[8]);
+        if (usdt > 0 && rate > 0) { num += rate * usdt; den += usdt; }
+      });
+      if (den > 0) fxRate = num / den;
+    } catch (_) { /* fall back to default */ }
+
+    // ── Build per-person rows in the requested scope ─────────────────────────
+    const SCOPE = ['Ron', 'Shila', 'Jason', 'Mika', 'John Paul', 'Jomar', 'Mark'];
+    const perPerson = SCOPE.map(person => {
+      const w = walletByPerson[person] || { in: 0, out: 0, inRows: 0, outRows: 0, wallets: new Set() };
+      const c = costByPerson[person]   || { php: 0, usd: 0, rows: 0 };
+      const walletInPhp = w.in * fxRate;
+      return {
+        person,
+        wallets: [...w.wallets],
+        walletInUsdt: w.in,
+        walletInPhp,
+        walletInRows: w.inRows,
+        walletOutUsdt: w.out,
+        walletOutRows: w.outRows,
+        costPhp:  c.php,
+        costUsd:  c.usd,
+        txCount:  c.rows,
+        variancePhp: walletInPhp - c.php,
+        varianceUsd: w.in - c.usd,
+        utilization: walletInPhp > 0 ? (c.php / walletInPhp) * 100 : null,
+      };
+    });
+
+    // ── Totals ───────────────────────────────────────────────────────────────
+    const totals = perPerson.reduce((acc, p) => {
+      acc.walletInUsdt += p.walletInUsdt;
+      acc.walletInPhp  += p.walletInPhp;
+      acc.walletOutUsdt+= p.walletOutUsdt;
+      acc.costPhp      += p.costPhp;
+      acc.costUsd      += p.costUsd;
+      acc.txCount      += p.txCount;
+      return acc;
+    }, { walletInUsdt: 0, walletInPhp: 0, walletOutUsdt: 0, costPhp: 0, costUsd: 0, txCount: 0 });
+    totals.variancePhp = totals.walletInPhp - totals.costPhp;
+    totals.varianceUsd = totals.walletInUsdt - totals.costUsd;
+    totals.utilization = totals.walletInPhp > 0 ? (totals.costPhp / totals.walletInPhp) * 100 : null;
+
+    res.json({
+      fxRate,
+      perPerson,
+      totals,
+      unmappedWallets,
+      sources: {
+        walletIn: "wallet_transactions (direction='In', USDT) × weighted FX from sheet",
+        cost:     "card_transactions (type='Authorization', status IN ('Authorized','Success'))",
+        mapping:  'Hardcoded wallet → person map derived from card target activity (2026-05-11)',
+      },
+    });
+  } catch (err) {
+    console.error('wallet-vs-cost error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // API: Full Master Ledger transactions (fund flow)
 app.get('/api/ledger', async (req, res) => {
   try {
