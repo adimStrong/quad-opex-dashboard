@@ -555,6 +555,12 @@ const CARD_PERSON_MAP = {
   '4592': 'Jomar',
   '4052': 'John Paul',
   '9446': 'Mark',
+  '5330': 'Ron',
+  '5344': 'Ron',
+  '7012': 'Mika',
+  '8174': 'Mika',
+  '2807': 'Unknown-2807',
+  '5026': 'Unknown-5026',
 };
 
 const resolvePersonFromCard = (cardNumber, fallback) => {
@@ -700,9 +706,16 @@ const DRIVE_CARD_PERSON_MAP = {
   '3077': 'Jason',
   '8888': 'Mika',
   '7266': 'Shila',
+  '2609': 'Shila',
   '4592': 'Jomar',
   '4052': 'John Paul',
   '9446': 'Mark',
+  '5330': 'Ron',
+  '5344': 'Ron',
+  '7012': 'Mika',
+  '8174': 'Mika',
+  '2807': 'Unknown-2807',
+  '5026': 'Unknown-5026',
 };
 const UNDEFINED_PERSON = 'undefined';
 
