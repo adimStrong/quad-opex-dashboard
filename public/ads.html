@@ -160,79 +160,6 @@ h2.card-title, h3.card-title { line-height: 1.25; }
 }
 .btn.secondary:hover:not(:disabled) { background: var(--bg-subtle); }
 
-/* ── Upload ─────────────────────────────────────── */
-.upload-grid {
-  display: grid;
-  grid-template-columns: 200px 1fr auto;
-  gap: 16px;
-  align-items: end;
-}
-@media (max-width: 720px) { .upload-grid { grid-template-columns: 1fr; } }
-.upload-control label {
-  display: block;
-  font-size: 0.74rem;
-  color: var(--ink-3);
-  font-weight: 500;
-  margin-bottom: 6px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-.upload-control select, .upload-control input {
-  width: 100%;
-  padding: 9px 12px;
-  border: 1px solid var(--border-strong);
-  border-radius: 8px;
-  background: var(--bg-surface);
-  color: var(--ink);
-  font: inherit;
-}
-.upload-control select:focus, .upload-control input:focus { outline: 2px solid var(--coral-line); outline-offset: -1px; border-color: var(--coral); }
-
-.drop-zone {
-  border: 1.5px dashed var(--border-strong);
-  border-radius: 8px;
-  padding: 22px 16px;
-  text-align: center;
-  background: var(--bg-subtle);
-  color: var(--ink-3);
-  cursor: pointer;
-  transition: all 0.15s;
-  position: relative;
-}
-.drop-zone:hover, .drop-zone.drag-over {
-  border-color: var(--coral);
-  background: var(--coral-soft);
-  color: var(--ink);
-}
-.drop-zone-text { font-size: 0.86rem; }
-.drop-zone-text strong { color: var(--coral); font-weight: 600; }
-.drop-zone input[type="file"] {
-  position: absolute; inset: 0; opacity: 0; cursor: pointer;
-}
-
-.upload-result {
-  margin-top: 16px;
-  padding: 0;
-  border-radius: 8px;
-  font-size: 0.86rem;
-  display: none;
-  white-space: pre-wrap;
-}
-.upload-result.success {
-  display: block;
-  padding: 12px 14px;
-  background: var(--green-soft);
-  color: var(--green);
-  border: 1px solid #C9DBD2;
-}
-.upload-result.error {
-  display: block;
-  padding: 12px 14px;
-  background: var(--red-soft);
-  color: var(--red);
-  border: 1px solid #ECCDC4;
-}
-
 /* ── KPI / metric cards ─────────────────────────── */
 .kpi-grid {
   display: grid;
@@ -578,42 +505,11 @@ td.num, .num { text-align: right; }
     <a class="nav-link" href="wallet.html">&#128176; Wallet (Mark)</a>
   </div>
 
-  <!-- ═══ Upload (Card Statement only — wallet moved to /wallet.html) ═══ -->
-  <div class="card">
-    <h2 class="card-title" style="margin-bottom:16px;">Upload Card Statement CSV</h2>
-    <div class="upload-grid">
-      <div class="upload-control">
-        <label>Person</label>
-        <select id="uploadPerson">
-          <option value="Jason">Jason</option>
-          <option value="Jomar">Jomar</option>
-          <option value="Mika">Mika</option>
-          <option value="Ron">Ron</option>
-          <option value="Shila">Shila</option>
-        </select>
-      </div>
-      <div class="upload-control">
-        <label>CSV File(s)</label>
-        <div class="drop-zone" id="dropZone">
-          <div class="drop-zone-text" id="dropZoneText">
-            Drag &amp; drop CSV here or <strong>click to browse</strong>
-          </div>
-          <input type="file" id="fileInput" accept=".csv" multiple>
-        </div>
-      </div>
-      <button class="btn" id="uploadBtn" disabled>Upload</button>
-    </div>
-    <div class="upload-result" id="uploadResult"></div>
-    <div style="margin-top:12px;font-size:0.85rem;color:#888;">
-      For Mark wallet uploads, go to <a href="wallet.html" style="color:#667eea;font-weight:700;">💰 Wallet Funding page</a>.
-    </div>
-  </div>
-
   <!-- ═══ Empty state ═══ -->
   <div id="emptyState" class="empty-state" style="display:none;">
     <div class="empty-state-icon">&#128196;</div>
     <h2>No transactions yet</h2>
-    <p>Upload a CSV to get started.</p>
+    <p>Card statements are synced automatically from the shared Google Drive folder.</p>
   </div>
 
   <!-- ═══ Main content wrapper ═══ -->
@@ -954,7 +850,6 @@ const PERSON_COLORS = {
 };
 
 const API = {
-  upload:       '/api/ads/upload',
   summary:      '/api/ads/summary',
   transactions: '/api/ads/transactions',
   byCard:       '/api/ads/by-card',
@@ -982,7 +877,6 @@ const PAGE_SIZE = 100;
 let state = {
   pageOffset: 0,
   totalTxns: 0,
-  files: [],
   charts: {},
 };
 
@@ -1066,85 +960,6 @@ function toast(msg, type = 'success') {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.className = 'toast ' + type, 4000);
 }
-
-// ══════════════════════════════════════════════════════════
-// Upload
-// ══════════════════════════════════════════════════════════
-const dropZone = document.getElementById('dropZone');
-const fileInput = document.getElementById('fileInput');
-const dropZoneText = document.getElementById('dropZoneText');
-const uploadBtn = document.getElementById('uploadBtn');
-const uploadResult = document.getElementById('uploadResult');
-
-dropZone.addEventListener('click', () => fileInput.click());
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-dropZone.addEventListener('drop', e => {
-  e.preventDefault();
-  dropZone.classList.remove('drag-over');
-  setFiles(Array.from(e.dataTransfer.files).filter(f => /\.csv$/i.test(f.name)));
-});
-fileInput.addEventListener('change', () => setFiles(Array.from(fileInput.files)));
-
-function setFiles(files) {
-  state.files = files;
-  if (files.length === 0) {
-    dropZoneText.innerHTML = 'Drag &amp; drop CSV here or <strong>click to browse</strong>';
-    uploadBtn.disabled = true;
-  } else {
-    dropZoneText.innerHTML = `<strong>${files.length}</strong> file${files.length > 1 ? 's' : ''} selected: ${files.map(f => f.name).join(', ')}`;
-    uploadBtn.disabled = false;
-  }
-}
-
-uploadBtn.addEventListener('click', async () => {
-  if (!state.files.length) return;
-  const person = document.getElementById('uploadPerson').value;
-  uploadBtn.disabled = true;
-  uploadResult.className = 'upload-result';
-  uploadResult.textContent = '';
-
-  let totals = { inserted: 0, skipped: 0, total: 0, files: 0, errors: [] };
-
-  for (const file of state.files) {
-    showLoader(`Uploading ${file.name}...`);
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('person', person);
-    try {
-      const res = await fetch(API.upload, { method: 'POST', body: fd });
-      if (!res.ok) {
-        const txt = await res.text();
-        totals.errors.push(`${file.name}: ${res.status} ${txt.slice(0, 120)}`);
-        continue;
-      }
-      const data = await res.json();
-      totals.inserted += Number(data.inserted || 0);
-      totals.skipped  += Number(data.skipped  || 0);
-      totals.total    += Number(data.total    || data.inserted + data.skipped || 0);
-      totals.files++;
-    } catch (e) {
-      totals.errors.push(`${file.name}: ${e.message}`);
-    }
-  }
-  hideLoader();
-
-  const hasErrors = totals.errors.length > 0;
-  const summary = `Processed ${totals.files}/${state.files.length} file(s) for ${person}. `
-    + `Inserted: ${fmtCount(totals.inserted)} · Skipped (dupes): ${fmtCount(totals.skipped)} · Total rows: ${fmtCount(totals.total)}`
-    + (hasErrors ? `\nErrors: ${totals.errors.join(' | ')}` : '');
-
-  uploadResult.className = 'upload-result ' + (hasErrors && totals.files === 0 ? 'error' : 'success');
-  uploadResult.textContent = summary;
-  toast(hasErrors ? 'Upload completed with errors' : 'Upload successful', hasErrors ? 'error' : 'success');
-
-  // Reset inputs + refresh
-  state.files = [];
-  fileInput.value = '';
-  setFiles([]);
-  uploadBtn.disabled = false;
-  refreshAll();
-});
 
 // ══════════════════════════════════════════════════════════
 // Data fetch
