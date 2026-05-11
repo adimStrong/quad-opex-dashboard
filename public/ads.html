@@ -160,6 +160,88 @@ h2.card-title, h3.card-title { line-height: 1.25; }
 }
 .btn.secondary:hover:not(:disabled) { background: var(--bg-subtle); }
 
+/* ── Funds vs Cost (Advertising group + Mark) ──────── */
+.fvc-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+@media (max-width: 720px) { .fvc-grid { grid-template-columns: 1fr; } }
+.fvc-card {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px;
+}
+.fvc-card h3 {
+  margin: 0 0 4px 0;
+  font-family: var(--font-display, inherit);
+  font-size: 1.1rem;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.fvc-card .fvc-sub { font-size: 0.78rem; color: var(--ink-3); margin-bottom: 14px; }
+.fvc-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 18px;
+  margin-bottom: 12px;
+}
+.fvc-stat .lbl {
+  display: block;
+  font-size: 0.70rem;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 2px;
+}
+.fvc-stat .val {
+  font-size: 1.32rem;
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.fvc-stat .val.pos { color: var(--green, #3F7866); }
+.fvc-stat .val.neg { color: var(--red,   #C15F3C); }
+.fvc-bar {
+  position: relative;
+  height: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 6px;
+}
+.fvc-bar > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--coral, #C15F3C), var(--gold, #B0892B));
+  transition: width 0.3s ease;
+}
+.fvc-bar.over > span { background: linear-gradient(90deg, var(--red, #C15F3C), #8a3a22); }
+.fvc-util-line {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: var(--ink-3);
+  margin-top: 6px;
+}
+.fvc-pp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.fvc-pp-table th, .fvc-pp-table td {
+  text-align: right;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+}
+.fvc-pp-table th { text-align: right; font-weight: 600; color: var(--ink-3); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.fvc-pp-table th:first-child, .fvc-pp-table td:first-child { text-align: left; }
+.fvc-pp-table td.pos { color: var(--green, #3F7866); }
+.fvc-pp-table td.neg { color: var(--red,   #C15F3C); }
+
 /* ── KPI / metric cards ─────────────────────────── */
 .kpi-grid {
   display: grid;
@@ -515,6 +597,19 @@ td.num, .num { text-align: right; }
   <!-- ═══ Main content wrapper ═══ -->
   <div id="mainContent" style="display:none;">
 
+    <!-- ═══ Funds Requested vs Card Cost ═══ -->
+    <div class="card" id="fundsVsCostCard" style="border: 2px solid rgba(193,95,60,0.20);">
+      <h2 class="card-title">⚖️ Funds Requested vs Card Cost</h2>
+      <p style="color:#666;font-size:0.9rem;margin:0 0 18px 0;">
+        <strong>Advertising</strong> tallies Ron + Shila + Jason + Mika + John Paul + Jomar from the
+        <em>Ads Budget Request</em> sheet vs their combined card spend.
+        <strong>Mark</strong> is standalone — wallet loads (USDT&nbsp;→&nbsp;PHP) vs his card 9446 spend.
+      </p>
+      <div class="fvc-grid" id="fvcGrid"></div>
+      <div id="fvcPerPerson" style="margin-top:18px;"></div>
+      <div id="fvcMeta" style="margin-top:10px;font-size:0.78rem;color:#888;"></div>
+    </div>
+
     <!-- ═══ Ads Spend by Advertiser (hero summary) ═══ -->
     <div class="card advertiser-summary" style="border: 2px solid rgba(102,126,234,0.25);">
       <h2 class="card-title">💼 Ads Spend by Advertiser</h2>
@@ -869,6 +964,8 @@ const API = {
   // Advertiser summary endpoints
   dailyByPerson: '/api/ads/daily-by-person',
   topMerchants:  '/api/ads/top-merchants',
+  // Funds vs Cost (Advertising group + Mark)
+  fundsVsCost:   '/api/ads/funds-vs-cost',
 };
 
 const PAGE_SIZE = 100;
@@ -971,7 +1068,7 @@ async function fetchJson(url) {
 async function refreshAll() {
   showLoader('Refreshing data...');
   try {
-    const [summary, daily, hourly, byCard, failedPat, reversal, fxRate, plan, dailyByPerson, topMerchants] = await Promise.all([
+    const [summary, daily, hourly, byCard, failedPat, reversal, fxRate, plan, dailyByPerson, topMerchants, fundsVsCost] = await Promise.all([
       fetchJson(API.summary).catch(e => { console.warn(e); return null; }),
       fetchJson(API.daily).catch(e => { console.warn(e); return []; }),
       fetchJson(API.hourly).catch(e => { console.warn(e); return []; }),
@@ -982,6 +1079,7 @@ async function refreshAll() {
       fetchJson(API.plan).catch(e => { console.warn(e); return []; }),
       fetchJson(API.dailyByPerson).catch(e => { console.warn(e); return []; }),
       fetchJson(API.topMerchants + '?limit=15').catch(e => { console.warn(e); return []; }),
+      fetchJson(API.fundsVsCost).catch(e => { console.warn(e); return null; }),
     ]);
 
     const hasCardData = summary && (Number(summary.totalTxns) > 0 || Number(summary.totalPhp) > 0);
@@ -1002,6 +1100,9 @@ async function refreshAll() {
       renderFailed(failedPat);
       renderReversal(reversal);
       renderFx(fxRate);
+
+      // Funds Requested vs Card Cost (Advertising group + Mark standalone)
+      renderFundsVsCost(fundsVsCost);
 
       // New advertiser summary renderers
       renderAdvertiserCards(summary?.byPerson || [], dailyByPerson || []);
@@ -1796,6 +1897,97 @@ function renderChart(id, cfg) {
 
 // ══════════════════════════════════════════════════════════
 // Ads Spend by Advertiser (hero summary)
+// ══════════════════════════════════════════════════════════
+// Funds Requested vs Card Cost (Advertising group + Mark)
+// ══════════════════════════════════════════════════════════
+function renderFundsVsCost(data) {
+  const grid = document.getElementById('fvcGrid');
+  const ppEl = document.getElementById('fvcPerPerson');
+  const metaEl = document.getElementById('fvcMeta');
+  if (!grid) return;
+  if (!data || !data.advertising) {
+    grid.innerHTML = '<div style="color:#999;padding:20px;text-align:center;grid-column:1/-1;">Funds-vs-cost data unavailable.</div>';
+    if (ppEl) ppEl.innerHTML = '';
+    if (metaEl) metaEl.textContent = '';
+    return;
+  }
+
+  const ad = data.advertising;
+  const mk = data.mark || {};
+
+  const card = (title, sub, fundsPhp, costPhp, util, varVal) => {
+    const utilClass = util != null && util > 100 ? 'over' : '';
+    const utilPct   = util != null ? util.toFixed(1) + '%' : '—';
+    const varSign   = varVal == null ? '—' : (varVal >= 0 ? 'pos' : 'neg');
+    const barWidth  = util != null ? Math.min(util, 100).toFixed(1) : 0;
+    return `
+      <div class="fvc-card">
+        <h3>${title}</h3>
+        <div class="fvc-sub">${sub}</div>
+        <div class="fvc-stats">
+          <div class="fvc-stat"><span class="lbl">Funds requested</span><span class="val">${fmtPhp(fundsPhp)}</span></div>
+          <div class="fvc-stat"><span class="lbl">Card cost</span><span class="val">${fmtPhp(costPhp)}</span></div>
+          <div class="fvc-stat"><span class="lbl">Variance</span><span class="val ${varSign}">${varVal == null ? '—' : (varVal >= 0 ? '+' : '') + fmtPhp(varVal)}</span></div>
+          <div class="fvc-stat"><span class="lbl">Utilization</span><span class="val ${utilClass ? 'neg' : ''}">${utilPct}</span></div>
+        </div>
+        <div class="fvc-bar ${utilClass}"><span style="width:${barWidth}%;"></span></div>
+        <div class="fvc-util-line">
+          <span>0</span>
+          <span>${util != null && util > 100 ? `over budget by ${(util - 100).toFixed(1)}%` : 'within budget'}</span>
+          <span>100%</span>
+        </div>
+      </div>`;
+  };
+
+  grid.innerHTML =
+    card(
+      'Advertising group',
+      `${ad.members.join(', ')} · ${fmtCount(ad.fundCount)} fund requests · ${fmtCount(ad.txCount)} card txns`,
+      ad.fundsPhp, ad.costPhp, ad.utilization, ad.variance
+    ) +
+    card(
+      'Mark (standalone)',
+      `Wallet loads (${fmtCount(mk.walletRows || 0)} IN, ${(mk.fundsUsdtWallet || 0).toFixed(2)} USDT @ ${(data.fxRate || 0).toFixed(2)}) · ${fmtCount(mk.txCount || 0)} card txns`,
+      mk.primaryFundsPhp || 0, mk.costPhp || 0, mk.utilization, mk.variance
+    );
+
+  // Per-person breakdown table for Advertising group
+  if (ppEl) {
+    const rows = ad.perPerson.map(p => {
+      const varClass = p.variance >= 0 ? 'pos' : 'neg';
+      const util = p.utilization != null ? p.utilization.toFixed(1) + '%' : '—';
+      return `<tr>
+        <td>${p.person}</td>
+        <td>${fmtPhp(p.fundsPhp)}</td>
+        <td>${fmtPhp(p.costPhp)}</td>
+        <td class="${varClass}">${(p.variance >= 0 ? '+' : '') + fmtPhp(p.variance)}</td>
+        <td>${util}</td>
+      </tr>`;
+    }).join('');
+    ppEl.innerHTML = `
+      <details style="margin-top:6px;">
+        <summary style="cursor:pointer;color:var(--ink-2,#444);font-size:0.85rem;padding:4px 0;">Per-person breakdown (Advertising group)</summary>
+        <table class="fvc-pp-table" style="margin-top:8px;">
+          <thead>
+            <tr><th>Person</th><th>Funds</th><th>Cost</th><th>Variance</th><th>Util</th></tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </details>`;
+  }
+
+  if (metaEl) {
+    const oos = data.outOfScope;
+    const oosNote = oos && oos.rows
+      ? ` · Excluded ${fmtCount(oos.rows)} non-advertiser fund requests (${fmtPhp(oos.fundsPhp)} — EJ Uy, JD Palma, Keldry, Kenson, etc.)`
+      : '';
+    metaEl.textContent =
+      `Funds source: Ads Budget Request sheet (col J Released PHP). ` +
+      `Cost source: card_transactions (Authorization, Authorized/Success only). ` +
+      `Mark fund source: wallet loads × FX ${(data.fxRate || 0).toFixed(2)}.${oosNote}`;
+  }
+}
+
 // ══════════════════════════════════════════════════════════
 // Store current filter state
 window.currentAdvertiser = null;

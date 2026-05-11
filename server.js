@@ -430,6 +430,154 @@ app.get('/api/adsfund', async (req, res) => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// /api/ads/funds-vs-cost
+// Two-group comparison the operator asked for:
+//   Advertising = Ron + Shila + Jason + Mika + John Paul + Jomar
+//   Mark        = standalone (wallet IN vs his card 9446 spend)
+//
+// Funds source: Ads Budget Request sheet (Released PHP column).
+//   Recipient names there are messy ("Ronald Barbolino", "Mark SEO", etc.)
+//   so RECIPIENT_TO_PERSON normalizes to canonical card_transactions.person.
+// Cost source: card_transactions, type='Authorization', status in (Authorized,Success).
+//   Mark's fund-in alternative: wallet_transactions direction='IN' × PHP rate.
+// ---------------------------------------------------------------------------
+const ADVERTISING_GROUP = ['Ron', 'Shila', 'Jason', 'Mika', 'John Paul', 'Jomar'];
+
+// Normalizes the free-text "Requestors Name" in the Ads Budget Request sheet
+// to the canonical short name used in card_transactions.person.
+// Anything not in this map is excluded from the Advertising/Mark tallies.
+const RECIPIENT_TO_PERSON = (recipient) => {
+  const r = (recipient || '').trim().toLowerCase();
+  if (!r) return null;
+  if (r.startsWith('ronald') || r === 'ron') return 'Ron';
+  if (r.startsWith('shila')) return 'Shila';
+  if (r.startsWith('jason')) return 'Jason';
+  if (r.startsWith('mika')) return 'Mika';
+  if (r.startsWith('john paul') || r === 'jp') return 'John Paul';
+  if (r.startsWith('jomar') || r === 'olivia johnson') return 'Jomar';
+  if (r.startsWith('mark')) return 'Mark';
+  return null; // EJ Uy, JD Palma, Keldry, Kenson, etc. — not in scope
+};
+
+app.get('/api/ads/funds-vs-cost', requireDb, async (req, res) => {
+  try {
+    // ── Funds: Ads Budget Request sheet ──────────────────────────────────────
+    const sheetRows = await getSheetData('Ads Budget Request sheet', 'A2:J1000');
+    const fundsByPerson = {};
+    let fundsOutOfScope = 0;
+    let fundsOutOfScopeCount = 0;
+    sheetRows.forEach(r => {
+      const recipient = (r[1] || '').trim();
+      const php = parseAmount(r[9]);
+      if (!recipient || !php) return;
+      const person = RECIPIENT_TO_PERSON(recipient);
+      if (!person) {
+        fundsOutOfScope += php;
+        fundsOutOfScopeCount++;
+        return;
+      }
+      if (!fundsByPerson[person]) fundsByPerson[person] = { php: 0, count: 0 };
+      fundsByPerson[person].php += php;
+      fundsByPerson[person].count++;
+    });
+
+    // ── Card cost: card_transactions ─────────────────────────────────────────
+    const costSql = `
+      SELECT person, COALESCE(SUM(transaction_amount), 0)::numeric AS php, COUNT(*)::int AS rows
+      FROM card_transactions
+      WHERE type = 'Authorization' AND status IN ('Authorized','Success')
+      GROUP BY person
+    `;
+    const costByPerson = {};
+    (await pgPool.query(costSql)).rows.forEach(r => {
+      costByPerson[r.person] = { php: Number(r.php) || 0, rows: r.rows };
+    });
+
+    // ── Wallet IN for Mark (alternate fund-in source) ────────────────────────
+    const walletInSql = `
+      SELECT COALESCE(SUM(amount), 0)::numeric AS usdt, COUNT(*)::int AS rows
+      FROM wallet_transactions
+      WHERE direction ILIKE 'in'
+    `;
+    const walletInRes = await pgPool.query(walletInSql);
+    const markWalletUsdt = Number(walletInRes.rows[0].usdt) || 0;
+    const markWalletRows = walletInRes.rows[0].rows;
+
+    // Weighted FX rate from the Ads Budget Request sheet (USDT > 0 rows only)
+    let rateNum = 0, rateDen = 0;
+    sheetRows.forEach(r => {
+      const usdt = parseAmount(String(r[7] || '').includes('₱') ? '0' : r[7]);
+      const rate = parseAmount(r[8]);
+      if (usdt > 0 && rate > 0) { rateNum += rate * usdt; rateDen += usdt; }
+    });
+    const fxRate = rateDen > 0 ? rateNum / rateDen : 59.8;
+
+    // ── Aggregate the Advertising group ──────────────────────────────────────
+    const advertising = {
+      members: ADVERTISING_GROUP,
+      fundsPhp: 0,
+      costPhp: 0,
+      fundCount: 0,
+      txCount: 0,
+      perPerson: [],
+    };
+    ADVERTISING_GROUP.forEach(person => {
+      const funds = fundsByPerson[person] || { php: 0, count: 0 };
+      const cost  = costByPerson[person]  || { php: 0, rows: 0 };
+      advertising.fundsPhp  += funds.php;
+      advertising.costPhp   += cost.php;
+      advertising.fundCount += funds.count;
+      advertising.txCount   += cost.rows;
+      advertising.perPerson.push({
+        person,
+        fundsPhp: funds.php,
+        costPhp: cost.php,
+        variance: funds.php - cost.php,
+        utilization: funds.php > 0 ? (cost.php / funds.php) * 100 : null,
+      });
+    });
+    advertising.variance = advertising.fundsPhp - advertising.costPhp;
+    advertising.utilization = advertising.fundsPhp > 0
+      ? (advertising.costPhp / advertising.fundsPhp) * 100
+      : null;
+
+    // ── Mark (standalone) ────────────────────────────────────────────────────
+    const markFundsBudget = (fundsByPerson['Mark'] || { php: 0, count: 0 });
+    const markCost = costByPerson['Mark'] || { php: 0, rows: 0 };
+    const markWalletPhp = markWalletUsdt * fxRate;
+    const mark = {
+      fundsPhpBudget: markFundsBudget.php,           // from Ads Budget Request
+      fundsPhpWallet: markWalletPhp,                 // from wallet IN × FX
+      fundsUsdtWallet: markWalletUsdt,
+      walletRows: markWalletRows,
+      budgetRows: markFundsBudget.count,
+      costPhp: markCost.php,
+      txCount: markCost.rows,
+      // Per the operator's earlier answer: "Mark wallet loads" is the
+      // primary fund-in source for the Mark side of this comparison.
+      primaryFundsPhp: markWalletPhp,
+      variance: markWalletPhp - markCost.php,
+      utilization: markWalletPhp > 0 ? (markCost.php / markWalletPhp) * 100 : null,
+    };
+
+    res.json({
+      advertising,
+      mark,
+      fxRate,
+      outOfScope: { fundsPhp: fundsOutOfScope, rows: fundsOutOfScopeCount },
+      sources: {
+        funds: 'Liquidation Sheet → Ads Budget Request sheet (col J Released PHP)',
+        cost:  "card_transactions (type='Authorization', status IN ('Authorized','Success'))",
+        markFunds: 'wallet_transactions (direction=IN) × weighted FX rate from sheet',
+      },
+    });
+  } catch (err) {
+    console.error('funds-vs-cost error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // API: Full Master Ledger transactions (fund flow)
 app.get('/api/ledger', async (req, res) => {
   try {
